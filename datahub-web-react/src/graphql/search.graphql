@@ -5,165 +5,307 @@ query getAutoCompleteResults($input: AutoCompleteInput!) {
     }
 }
 
-query getSearchResults($input: SearchInput!) {
-    search(input: $input) {
-        start
-        count
-        total
-        searchResults {
-            entity {
-                urn
-                type
-                ... on Dataset {
+query getAutoCompleteMultipleResults($input: AutoCompleteMultipleInput!) {
+    autoCompleteForMultiple(input: $input) {
+        query
+        suggestions {
+            type
+            suggestions
+        }
+    }
+}
+
+fragment searchResults on SearchResults {
+    start
+    count
+    total
+    searchResults {
+        entity {
+            urn
+            type
+            ... on Dataset {
+                name
+                origin
+                description
+                uri
+                platform {
                     name
-                    origin
-                    description
-                    uri
-                    platform {
-                        name
-                        info {
-                            logoUrl
-                        }
+                    info {
+                        logoUrl
                     }
-                    platformNativeType
-                    tags
-                    properties {
+                }
+                editableProperties {
+                    description
+                }
+                platformNativeType
+                properties {
+                    customProperties {
                         key
                         value
                     }
-                    ownership {
-                        ...ownershipFields
-                    }
-                    globalTags {
-                        ...globalTagsFields
-                    }
                 }
-                ... on CorpUser {
-                    username
-                    info {
-                        active
-                        displayName
-                        title
-                        firstName
-                        lastName
-                        fullName
-                    }
-                    editableInfo {
-                        pictureLink
-                    }
+                ownership {
+                    ...ownershipFields
                 }
-                ... on Dashboard {
-                    urn
-                    type
-                    tool
-                    dashboardId
-                    info {
-                        name
-                        description
-                        externalUrl
-                        access
-                        lastModified {
-                            time
-                        }
-                    }
-                    ownership {
-                        ...ownershipFields
-                    }
-                    globalTags {
-                        ...globalTagsFields
-                    }
+                globalTags {
+                    ...globalTagsFields
                 }
-                ... on Chart {
-                    urn
-                    type
-                    tool
-                    chartId
-                    info {
-                        name
-                        description
-                        externalUrl
+                glossaryTerms {
+                    ...glossaryTerms
+                }
+                subTypes {
+                    typeNames
+                }
+            }
+            ... on CorpUser {
+                username
+                info {
+                    active
+                    displayName
+                    title
+                    firstName
+                    lastName
+                    fullName
+                }
+                editableInfo {
+                    pictureLink
+                }
+            }
+            ... on CorpGroup {
+                name
+                info {
+                    displayName
+                    description
+                }
+                relationships(input: { types: ["IsMemberOfGroup"], direction: INCOMING }) {
+                    relationships {
                         type
-                        access
-                        lastModified {
-                            time
+                        direction
+                        entity {
+                            urn
+                            type
+                            ... on CorpUser {
+                                username
+                                info {
+                                    active
+                                    displayName
+                                    title
+                                    firstName
+                                    lastName
+                                }
+                                editableInfo {
+                                    pictureLink
+                                }
+                            }
                         }
-                    }
-                    ownership {
-                        ...ownershipFields
-                    }
-                    globalTags {
-                        ...globalTagsFields
                     }
                 }
-                ... on DataFlow {
-                    urn
-                    type
-                    orchestrator
-                    flowId
-                    cluster
-                    info {
-                        name
-                        description
-                        project
-                    }
-                    ownership {
-                        ...ownershipFields
-                    }
-                    globalTags {
-                        ...globalTagsFields
+            }
+            ... on Dashboard {
+                urn
+                type
+                tool
+                dashboardId
+                info {
+                    name
+                    description
+                    externalUrl
+                    access
+                    lastModified {
+                        time
                     }
                 }
-                ... on DataJob {
-                    urn
+                ownership {
+                    ...ownershipFields
+                }
+                globalTags {
+                    ...globalTagsFields
+                }
+                glossaryTerms {
+                    ...glossaryTerms
+                }
+                editableProperties {
+                    description
+                }
+            }
+            ... on Chart {
+                urn
+                type
+                tool
+                chartId
+                info {
+                    name
+                    description
+                    externalUrl
                     type
-                    dataFlow {
-                        ...nonRecursiveDataFlowFields
+                    access
+                    lastModified {
+                        time
                     }
-                    jobId
-                    ownership {
-                        ...ownershipFields
+                }
+                ownership {
+                    ...ownershipFields
+                }
+                globalTags {
+                    ...globalTagsFields
+                }
+                glossaryTerms {
+                    ...glossaryTerms
+                }
+                editableProperties {
+                    description
+                }
+            }
+            ... on DataFlow {
+                urn
+                type
+                orchestrator
+                flowId
+                cluster
+                info {
+                    name
+                    description
+                    project
+                }
+                ownership {
+                    ...ownershipFields
+                }
+                globalTags {
+                    ...globalTagsFields
+                }
+                glossaryTerms {
+                    ...glossaryTerms
+                }
+                editableProperties {
+                    description
+                }
+            }
+            ... on DataJob {
+                urn
+                type
+                dataFlow {
+                    ...nonRecursiveDataFlowFields
+                }
+                jobId
+                ownership {
+                    ...ownershipFields
+                }
+                info {
+                    name
+                    description
+                }
+                globalTags {
+                    ...globalTagsFields
+                }
+                glossaryTerms {
+                    ...glossaryTerms
+                }
+                editableProperties {
+                    description
+                }
+            }
+            ... on GlossaryTerm {
+                name
+                glossaryTermInfo {
+                    definition
+                    termSource
+                    sourceRef
+                    sourceUrl
+                    customProperties {
+                        key
+                        value
                     }
-                    inputOutput {
-                        inputDatasets {
-                            ...nonRecursiveDatasetFields
-                        }
-                        outputDatasets {
-                            ...nonRecursiveDatasetFields
-                        }
+                }
+            }
+            ... on MLFeatureTable {
+                urn
+                type
+                name
+                description
+                featureTableProperties {
+                    description
+                    mlFeatures {
+                        urn
                     }
+                    mlPrimaryKeys {
+                        urn
+                    }
+                }
+                ownership {
+                    ...ownershipFields
+                }
+            }
+            ... on MLModel {
+                name
+                description
+                origin
+                ownership {
+                    ...ownershipFields
+                }
+                platform {
+                    name
                     info {
-                        name
-                        description
+                        logoUrl
                     }
-                    globalTags {
-                        ...globalTagsFields
+                }
+            }
+            ... on MLModelGroup {
+                name
+                origin
+                description
+                ownership {
+                    ...ownershipFields
+                }
+                platform {
+                    name
+                    info {
+                        logoUrl
                     }
+                }
+            }
+        }
+        matchedFields {
+            name
+            value
+        }
+    }
+    facets {
+        field
+        displayName
+        aggregations {
+            value
+            count
+            entity {
+                urn
+                type
+                ... on Tag {
+                    name
+                    description
                 }
                 ... on GlossaryTerm {
                     name
-                    glossaryTermInfo {
-                        definition
-                        termSource
-                        sourceRef
-                        sourceUrl
-                        customProperties {
-                            key
-                            value
-                        }
+                }
+                ... on DataPlatform {
+                    name
+                    displayName
+                    info {
+                        displayName
+                        logoUrl
                     }
                 }
             }
-            matchedFields {
-                name
-                value
-            }
         }
-        facets {
-            field
-            aggregations {
-                value
-                count
-            }
-        }
+    }
+}
+
+query getSearchResults($input: SearchInput!) {
+    search(input: $input) {
+        ...searchResults
+    }
+}
+
+query getSearchResultsForMultiple($input: SearchAcrossEntitiesInput!) {
+    searchAcrossEntities(input: $input) {
+        ...searchResults
     }
 }

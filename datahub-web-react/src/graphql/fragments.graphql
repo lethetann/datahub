@@ -101,14 +101,20 @@ fragment nonRecursiveDatasetFields on Dataset {
     platform {
         name
         info {
+            displayName
             logoUrl
         }
     }
     platformNativeType
-    tags
     properties {
-        key
-        value
+        customProperties {
+            key
+            value
+        }
+        externalUrl
+    }
+    editableProperties {
+        description
     }
     ownership {
         ...ownershipFields
@@ -116,7 +122,10 @@ fragment nonRecursiveDatasetFields on Dataset {
     institutionalMemory {
         elements {
             url
-            author
+            author {
+                urn
+                username
+            }
             description
             created {
                 actor
@@ -124,37 +133,11 @@ fragment nonRecursiveDatasetFields on Dataset {
             }
         }
     }
-    schema {
-        datasetUrn
-        name
-        platformUrn
-        version
-        hash
-        platformSchema {
-            ... on TableSchema {
-                schema
-            }
-            ... on KeyValueSchema {
-                keySchema
-                valueSchema
-            }
-        }
-        fields {
-            fieldPath
-            jsonPath
-            nullable
-            description
-            type
-            nativeDataType
-            recursive
-            globalTags {
-                ...globalTagsFields
-            }
-            glossaryTerms {
-                ...glossaryTerms
-            }
-        }
-        primaryKeys
+    schemaMetadata(version: 0) {
+        ...schemaMetadataFields
+    }
+    previousSchemaMetadata: schemaMetadata(version: -1) {
+        ...schemaMetadataFields
     }
     editableSchemaMetadata {
         editableSchemaFieldInfo {
@@ -177,6 +160,9 @@ fragment nonRecursiveDatasetFields on Dataset {
     glossaryTerms {
         ...glossaryTerms
     }
+    subTypes {
+        typeNames
+    }
 }
 
 fragment nonRecursiveDataFlowFields on DataFlow {
@@ -195,8 +181,27 @@ fragment nonRecursiveDataFlowFields on DataFlow {
             value
         }
     }
+    editableProperties {
+        description
+    }
     ownership {
         ...ownershipFields
+    }
+}
+
+fragment nonRecursiveDataJobFields on DataJob {
+    urn
+    info {
+        name
+        description
+        externalUrl
+        customProperties {
+            key
+            value
+        }
+    }
+    globalTags {
+        ...globalTagsFields
     }
 }
 
@@ -217,6 +222,9 @@ fragment dataJobFields on DataJob {
         outputDatasets {
             ...nonRecursiveDatasetFields
         }
+        inputDatajobs {
+            ...nonRecursiveDataJobFields
+        }
     }
     info {
         name
@@ -227,8 +235,28 @@ fragment dataJobFields on DataJob {
             value
         }
     }
+    editableProperties {
+        description
+    }
     globalTags {
         ...globalTagsFields
+    }
+    institutionalMemory {
+        elements {
+            url
+            author {
+                urn
+                username
+            }
+            label
+            created {
+                time
+                actor
+            }
+        }
+    }
+    glossaryTerms {
+        ...glossaryTerms
     }
 }
 
@@ -240,21 +268,6 @@ fragment dashboardFields on Dashboard {
     info {
         name
         description
-        charts {
-            urn
-            tool
-            type
-            info {
-                name
-                description
-                inputs {
-                    urn
-                }
-            }
-            ownership {
-                ...ownershipFields
-            }
-        }
         customProperties {
             key
             value
@@ -274,5 +287,301 @@ fragment dashboardFields on Dashboard {
     }
     globalTags {
         ...globalTagsFields
+    }
+    institutionalMemory {
+        elements {
+            url
+            author {
+                urn
+                username
+            }
+            label
+            created {
+                time
+                actor
+            }
+        }
+    }
+    glossaryTerms {
+        ...glossaryTerms
+    }
+}
+
+fragment nonRecursiveMLFeature on MLFeature {
+    urn
+    type
+    name
+    featureNamespace
+    description
+    dataType
+    featureProperties {
+        description
+        dataType
+        version {
+            versionTag
+        }
+        sources {
+            urn
+            name
+            type
+            origin
+            description
+            uri
+            platform {
+                name
+                info {
+                    logoUrl
+                }
+            }
+            platformNativeType
+        }
+    }
+    ownership {
+        ...ownershipFields
+    }
+    institutionalMemory {
+        elements {
+            url
+            author {
+                urn
+                username
+            }
+            description
+            created {
+                actor
+                time
+            }
+        }
+    }
+    status {
+        removed
+    }
+}
+
+fragment nonRecursiveMLPrimaryKey on MLPrimaryKey {
+    urn
+    type
+    name
+    featureNamespace
+    description
+    dataType
+    primaryKeyProperties {
+        description
+        dataType
+        version {
+            versionTag
+        }
+        sources {
+            urn
+            name
+            type
+            origin
+            description
+            uri
+            platform {
+                name
+                info {
+                    logoUrl
+                }
+            }
+            platformNativeType
+        }
+    }
+    ownership {
+        ...ownershipFields
+    }
+    institutionalMemory {
+        elements {
+            url
+            author {
+                urn
+                username
+            }
+            description
+            created {
+                actor
+                time
+            }
+        }
+    }
+    status {
+        removed
+    }
+}
+
+fragment nonRecursiveMLFeatureTable on MLFeatureTable {
+    urn
+    type
+    name
+    platform {
+        name
+        info {
+            displayName
+            logoUrl
+        }
+    }
+    description
+    featureTableProperties {
+        description
+        mlFeatures {
+            ...nonRecursiveMLFeature
+        }
+        mlPrimaryKeys {
+            ...nonRecursiveMLPrimaryKey
+        }
+    }
+    ownership {
+        ...ownershipFields
+    }
+    institutionalMemory {
+        elements {
+            url
+            author {
+                urn
+                username
+            }
+            description
+            created {
+                actor
+                time
+            }
+        }
+    }
+    status {
+        removed
+    }
+}
+
+fragment schemaMetadataFields on SchemaMetadata {
+    aspectVersion
+    createdAt
+    datasetUrn
+    name
+    platformUrn
+    version
+    cluster
+    hash
+    platformSchema {
+        ... on TableSchema {
+            schema
+        }
+        ... on KeyValueSchema {
+            keySchema
+            valueSchema
+        }
+    }
+    fields {
+        fieldPath
+        jsonPath
+        nullable
+        description
+        type
+        nativeDataType
+        recursive
+        isPartOfKey
+        globalTags {
+            ...globalTagsFields
+        }
+        glossaryTerms {
+            ...glossaryTerms
+        }
+    }
+    primaryKeys
+    foreignKeys {
+        name
+        sourceFields {
+            fieldPath
+        }
+        foreignFields {
+            fieldPath
+        }
+        foreignDataset {
+            urn
+            name
+            type
+            origin
+            description
+            uri
+            platform {
+                name
+                info {
+                    displayName
+                    logoUrl
+                }
+            }
+            platformNativeType
+            ownership {
+                ...ownershipFields
+            }
+            globalTags {
+                ...globalTagsFields
+            }
+            glossaryTerms {
+                ...glossaryTerms
+            }
+        }
+    }
+}
+
+fragment nonRecursiveMLModel on MLModel {
+    urn
+    type
+    name
+    description
+    origin
+    platform {
+        name
+        info {
+            logoUrl
+        }
+    }
+    ownership {
+        ...ownershipFields
+    }
+    properties {
+        description
+        date
+        version
+        type
+        trainingMetrics {
+            name
+            description
+            value
+        }
+        hyperParams {
+            name
+            description
+            value
+        }
+        mlFeatures
+        groups {
+            urn
+            name
+            description
+        }
+        customProperties {
+            key
+            value
+        }
+    }
+    globalTags {
+        ...globalTagsFields
+    }
+}
+
+fragment nonRecursiveMLModelGroupFields on MLModelGroup {
+    urn
+    type
+    name
+    description
+    origin
+    platform {
+        name
+        info {
+            logoUrl
+        }
+    }
+    ownership {
+        ...ownershipFields
     }
 }

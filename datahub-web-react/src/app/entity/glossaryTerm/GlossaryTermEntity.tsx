@@ -1,8 +1,9 @@
 import * as React from 'react';
 import { BookFilled, BookOutlined } from '@ant-design/icons';
-import { EntityType, GlossaryTerm } from '../../../types.generated';
+import { EntityType, GlossaryTerm, SearchResult } from '../../../types.generated';
 import { Entity, IconStyleType, PreviewType } from '../Entity';
 import { Preview } from './preview/Preview';
+import GlossaryTermProfile from './profile/GlossaryTermProfile';
 
 /**
  * Definition of the DataHub Dataset entity.
@@ -29,9 +30,9 @@ export class GlossaryTermEntity implements Entity<GlossaryTerm> {
         );
     };
 
-    isSearchEnabled = () => false;
+    isSearchEnabled = () => true;
 
-    isBrowseEnabled = () => false;
+    isBrowseEnabled = () => true;
 
     getAutoCompleteFieldName = () => 'name';
 
@@ -39,11 +40,15 @@ export class GlossaryTermEntity implements Entity<GlossaryTerm> {
 
     getPathName = () => 'glossary';
 
-    getCollectionName = () => 'Business Glossary';
+    getCollectionName = () => 'Glossary Terms';
 
-    renderProfile = (urn: string) => <div>Coming soon.... {urn}</div>;
+    getEntityName = () => 'Glossary Term';
 
-    renderSearch = () => <div />;
+    renderProfile: (urn: string) => JSX.Element = (_) => <GlossaryTermProfile />;
+
+    renderSearch = (result: SearchResult) => {
+        return this.renderPreview(PreviewType.SEARCH, result.entity as GlossaryTerm);
+    };
 
     renderPreview = (_: PreviewType, data: GlossaryTerm) => {
         return (
@@ -54,5 +59,9 @@ export class GlossaryTermEntity implements Entity<GlossaryTerm> {
                 owners={data?.ownership?.owners}
             />
         );
+    };
+
+    displayName = (data: GlossaryTerm) => {
+        return data.name;
     };
 }

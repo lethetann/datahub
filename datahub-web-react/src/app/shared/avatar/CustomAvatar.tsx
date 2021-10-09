@@ -1,21 +1,23 @@
-import { Avatar, AvatarProps, Tooltip } from 'antd';
+import { Avatar, Tooltip } from 'antd';
 import { TooltipPlacement } from 'antd/lib/tooltip';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 
 import defaultAvatar from '../../../images/default_avatar.png';
+import getAvatarColor from './getAvatarColor';
 
-const AvatarStyled = styled(
-    ({ size: _, isGroup: __, ...props }: AvatarProps & { size?: number; isGroup?: boolean }) => <Avatar {...props} />,
-)`
+const AvatarStyled = styled(Avatar)<{ size?: number; backgroundColor: string }>`
     color: #fff;
-    background-color: ${(props) =>
-        props.isGroup ? '#ccc' : '#ccc'}; // TODO: make it different style for corpGroup vs corpUser
-    text-align: center;
+    background-color: ${(props) => props.backgroundColor};
     font-size: ${(props) => (props.size ? `${Math.max(props.size / 2.0, 14)}px` : '14px')} !important;
-    && > span {
-        transform: scale(1) translateX(-46%) translateY(-3%) !important;
+    margin-right: 4px;
+    height: 24px;
+    width: 24px;
+
+    .ant-avatar-string {
+        text-align: center;
+        top: ${(props) => ((props.size || 0) < 24 ? '-4' : '0')}px;
     }
 `;
 
@@ -41,20 +43,20 @@ export default function CustomAvatar({
     isGroup = false,
 }: Props) {
     const avatarWithInitial = name ? (
-        <AvatarStyled style={style} size={size} isGroup={isGroup}>
+        <AvatarStyled style={style} size={size} backgroundColor={getAvatarColor(name)}>
             {name.charAt(0).toUpperCase()}
         </AvatarStyled>
     ) : (
-        <AvatarStyled src={defaultAvatar} style={style} size={size} isGroup={isGroup} />
+        <AvatarStyled src={defaultAvatar} style={style} size={size} backgroundColor={getAvatarColor(name)} />
     );
     const avatarWithDefault = useDefaultAvatar ? (
-        <AvatarStyled src={defaultAvatar} style={style} size={size} isGroup={isGroup} />
+        <AvatarStyled src={defaultAvatar} style={style} size={size} backgroundColor={getAvatarColor(name)} />
     ) : (
         avatarWithInitial
     );
     const avatar =
         photoUrl && photoUrl !== '' ? (
-            <AvatarStyled src={photoUrl} style={style} size={size} isGroup={isGroup} />
+            <AvatarStyled src={photoUrl} style={style} size={size} backgroundColor={getAvatarColor(name)} />
         ) : (
             avatarWithDefault
         );

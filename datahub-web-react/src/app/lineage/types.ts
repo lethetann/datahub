@@ -1,4 +1,15 @@
-import { Chart, Dashboard, DataJob, Dataset, EntityType } from '../../types.generated';
+import {
+    Chart,
+    Dashboard,
+    DataJob,
+    Dataset,
+    EntityType,
+    MlFeatureTable,
+    MlPrimaryKey,
+    MlFeature,
+    MlModel,
+    MlModelGroup,
+} from '../../types.generated';
 
 export type EntitySelectParams = {
     type: EntityType;
@@ -15,6 +26,7 @@ export type FetchedEntity = {
     urn: string;
     name: string;
     type: EntityType;
+    subtype?: string;
     icon?: string;
     // children?: Array<string>;
     upstreamChildren?: Array<string>;
@@ -27,6 +39,7 @@ export type NodeData = {
     urn?: string;
     name: string;
     type?: EntityType;
+    subtype?: string;
     children?: Array<NodeData>;
     unexploredChildren?: number;
     icon?: string;
@@ -75,4 +88,24 @@ export type EntityAndType =
     | {
           type: EntityType.DataJob;
           entity: DataJob;
+      }
+    | {
+          type: EntityType.MlfeatureTable;
+          entity: MlFeatureTable;
+      }
+    | {
+          type: EntityType.Mlfeature;
+          entity: MlFeature;
+      }
+    | {
+          type: EntityType.Mlmodel;
+          entity: MlModel;
+      }
+    | {
+          type: EntityType.MlmodelGroup;
+          entity: MlModelGroup;
+      }
+    | {
+          type: EntityType.MlprimaryKey;
+          entity: MlPrimaryKey;
       };

@@ -1,9 +1,9 @@
-import time
+import logging
 from collections import Counter
 from dataclasses import dataclass, field
 from typing import Any
 from typing import Counter as CounterType
-from typing import Dict, Iterable, List, Optional, Tuple, Type, Union
+from typing import Dict, Iterable, List, Optional, Tuple, Type, Union, ValuesView
 
 import bson
 import pymongo
@@ -12,10 +12,10 @@ from pydantic import PositiveInt
 from pymongo.mongo_client import MongoClient
 
 from datahub.configuration.common import AllowDenyPattern, ConfigModel
+from datahub.emitter.mce_builder import DEFAULT_ENV
 from datahub.ingestion.api.common import PipelineContext
 from datahub.ingestion.api.source import Source, SourceReport
-from datahub.ingestion.source.metadata_common import MetadataWorkUnit
-from datahub.metadata.com.linkedin.pegasus2avro.common import AuditStamp
+from datahub.ingestion.api.workunit import MetadataWorkUnit
 from datahub.metadata.com.linkedin.pegasus2avro.metadata.snapshot import DatasetSnapshot
 from datahub.metadata.com.linkedin.pegasus2avro.mxe import MetadataChangeEvent
 from datahub.metadata.com.linkedin.pegasus2avro.schema import (
@@ -35,6 +35,8 @@ from datahub.metadata.com.linkedin.pegasus2avro.schema import (
 )
 from datahub.metadata.schema_classes import DatasetPropertiesClass
 
+logger = logging.getLogger(__name__)
+
 # These are MongoDB-internal databases, which we want to skip.
 # See https://docs.mongodb.com/manual/reference/local-database/ and
 # https://docs.mongodb.com/manual/reference/config-database/ and
@@ -52,6 +54,9 @@ class MongoDBConfig(ConfigModel):
     options: dict = {}
     enableSchemaInference: bool = True
     schemaSamplingSize: Optional[PositiveInt] = 1000
+    useRandomSampling: bool = True
+    maxSchemaSize: Optional[PositiveInt] = 300
+    env: str = DEFAULT_ENV
 
     database_pattern: AllowDenyPattern = AllowDenyPattern.allow_all()
     collection_pattern: AllowDenyPattern = AllowDenyPattern.allow_all()
@@ -279,6 +284,7 @@ def construct_schema(
 def construct_schema_pymongo(
     collection: pymongo.collection.Collection,
     delimiter: str,
+    use_random_sampling: bool,
     sample_size: Optional[int] = None,
 ) -> Dict[Tuple[str, ...], SchemaDescription]:
     """
@@ -299,10 +305,15 @@ def construct_schema_pymongo(
     """
 
     if sample_size:
-        # get sample documents in collection
-        documents = collection.aggregate(
-            [{"$sample": {"size": sample_size}}], allowDiskUse=True
-        )
+        if use_random_sampling:
+            # get sample documents in collection
+            documents = collection.aggregate(
+                [{"$sample": {"size": sample_size}}], allowDiskUse=True
+            )
+        else:
+            documents = collection.aggregate(
+                [{"$limit": sample_size}], allowDiskUse=True
+            )
     else:
         # if sample_size is not provided, just take all items in the collection
         documents = collection.find({})
@@ -392,7 +403,6 @@ class MongoDBSource(Source):
         return SchemaFieldDataType(type=TypeClass())
 
     def get_workunits(self) -> Iterable[MetadataWorkUnit]:
-        env = "PROD"
         platform = "mongodb"
 
         database_names: List[str] = self.mongo_client.list_database_names()
@@ -416,8 +426,10 @@ class MongoDBSource(Source):
                     self.report.report_dropped(dataset_name)
                     continue
 
+                dataset_urn = f"urn:li:dataset:(urn:li:dataPlatform:{platform},{dataset_name},{self.config.env})"
+
                 dataset_snapshot = DatasetSnapshot(
-                    urn=f"urn:li:dataset:(urn:li:dataPlatform:{platform},{dataset_name},{env})",
+                    urn=dataset_urn,
                     aspects=[],
                 )
 
@@ -432,15 +444,43 @@ class MongoDBSource(Source):
                     collection_schema = construct_schema_pymongo(
                         database[collection_name],
                         delimiter=".",
+                        use_random_sampling=self.config.useRandomSampling,
                         sample_size=self.config.schemaSamplingSize,
                     )
 
                     # initialize the schema for the collection
                     canonical_schema: List[SchemaField] = []
+                    max_schema_size = self.config.maxSchemaSize
+                    collection_schema_size = len(collection_schema.values())
+                    collection_fields: Union[
+                        List[SchemaDescription], ValuesView[SchemaDescription]
+                    ] = collection_schema.values()
+                    assert max_schema_size is not None
+                    if collection_schema_size > max_schema_size:
+                        # downsample the schema, using frequency as the sort key
+                        self.report.report_warning(
+                            key=dataset_urn,
+                            reason=f"Downsampling the collection schema because it has {collection_schema_size} fields. Threshold is {max_schema_size}",
+                        )
+                        collection_fields = sorted(
+                            collection_schema.values(),
+                            key=lambda x: x["count"],
+                            reverse=True,
+                        )[0:max_schema_size]
+                        # Add this information to the custom properties so user can know they are looking at downsampled schema
+                        dataset_properties.customProperties[
+                            "schema.downsampled"
+                        ] = "True"
+                        dataset_properties.customProperties[
+                            "schema.totalFields"
+                        ] = f"{collection_schema_size}"
 
+                    logger.debug(
+                        f"Size of collection fields = {len(collection_fields)}"
+                    )
                     # append each schema field (sort so output is consistent)
                     for schema_field in sorted(
-                        collection_schema.values(), key=lambda x: x["delimited_name"]
+                        collection_fields, key=lambda x: x["delimited_name"]
                     ):
                         field = SchemaField(
                             fieldPath=schema_field["delimited_name"],
@@ -457,16 +497,12 @@ class MongoDBSource(Source):
                         canonical_schema.append(field)
 
                     # create schema metadata object for collection
-                    actor = "urn:li:corpuser:etl"
-                    sys_time = int(time.time() * 1000)
                     schema_metadata = SchemaMetadata(
                         schemaName=collection_name,
                         platform=f"urn:li:dataPlatform:{platform}",
                         version=0,
                         hash="",
                         platformSchema=SchemalessClass(),
-                        created=AuditStamp(time=sys_time, actor=actor),
-                        lastModified=AuditStamp(time=sys_time, actor=actor),
                         fields=canonical_schema,
                     )
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { EntityType, FabricType, Owner, GlobalTags } from '../../../../types.generated';
+import { EntityType, FabricType, Owner, GlobalTags, GlossaryTerms } from '../../../../types.generated';
 import DefaultPreviewCard from '../../../preview/DefaultPreviewCard';
 import { useEntityRegistry } from '../../../useEntityRegistry';
 import { capitalizeFirstLetter } from '../../../shared/capitalizeFirstLetter';
@@ -14,6 +14,8 @@ export const Preview = ({
     owners,
     globalTags,
     snippet,
+    glossaryTerms,
+    subtype,
 }: {
     urn: string;
     name: string;
@@ -24,21 +26,24 @@ export const Preview = ({
     owners?: Array<Owner> | null;
     globalTags?: GlobalTags | null;
     snippet?: React.ReactNode | null;
+    glossaryTerms?: GlossaryTerms | null;
+    subtype?: string | null;
 }): JSX.Element => {
     const entityRegistry = useEntityRegistry();
     const capitalPlatformName = capitalizeFirstLetter(platformName);
     return (
         <DefaultPreviewCard
-            url={`/${entityRegistry.getPathName(EntityType.Dataset)}/${urn}`}
+            url={entityRegistry.getEntityUrl(EntityType.Dataset, urn)}
             name={name || ''}
             description={description || ''}
-            type="Dataset"
+            type={capitalizeFirstLetter(subtype) || 'Dataset'}
             logoUrl={platformLogo || ''}
             platform={capitalPlatformName}
             qualifier={origin}
             tags={globalTags || undefined}
             owners={owners}
             snippet={snippet}
+            glossaryTerms={glossaryTerms || undefined}
         />
     );
 };

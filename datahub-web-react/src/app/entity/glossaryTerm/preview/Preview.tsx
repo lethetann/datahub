@@ -18,11 +18,11 @@ export const Preview = ({
     const entityRegistry = useEntityRegistry();
     return (
         <DefaultPreviewCard
-            url={`/${entityRegistry.getPathName(EntityType.GlossaryTerm)}/${urn}`}
+            url={entityRegistry.getEntityUrl(EntityType.GlossaryTerm, urn)}
             name={name || ''}
             description={definition || ''}
             owners={owners}
-            logoComponent={<BookOutlined style={{ fontSize: '72px' }} />}
+            logoComponent={<BookOutlined style={{ fontSize: '24px' }} />}
         />
     );
 };
