@@ -1,24 +1,32 @@
 import { DashboardFilled, DashboardOutlined } from '@ant-design/icons';
 import * as React from 'react';
+
 import {
     GetDashboardQuery,
     useGetDashboardQuery,
     useUpdateDashboardMutation,
 } from '../../../graphql/dashboard.generated';
-import { Dashboard, EntityType, PlatformType, SearchResult } from '../../../types.generated';
-import { Direction } from '../../lineage/types';
-import { getLogoFromPlatform } from '../../shared/getLogoFromPlatform';
-import getChildren from '../../lineage/utils/getChildren';
-import { Entity, IconStyleType, PreviewType } from '../Entity';
+import { Dashboard, EntityType, LineageDirection, OwnershipType, SearchResult } from '../../../types.generated';
+import { Entity, EntityCapabilityType, IconStyleType, PreviewType } from '../Entity';
 import { EntityProfile } from '../shared/containers/profile/EntityProfile';
 import { SidebarOwnerSection } from '../shared/containers/profile/sidebar/Ownership/SidebarOwnerSection';
-import { SidebarAboutSection } from '../shared/containers/profile/sidebar/SidebarAboutSection';
+import { SidebarAboutSection } from '../shared/containers/profile/sidebar/AboutSection/SidebarAboutSection';
 import { SidebarTagsSection } from '../shared/containers/profile/sidebar/SidebarTagsSection';
 import { DocumentationTab } from '../shared/tabs/Documentation/DocumentationTab';
 import { DashboardChartsTab } from '../shared/tabs/Entity/DashboardChartsTab';
+import { DashboardDatasetsTab } from '../shared/tabs/Entity/DashboardDatasetsTab';
 import { PropertiesTab } from '../shared/tabs/Properties/PropertiesTab';
 import { GenericEntityProperties } from '../shared/types';
 import { DashboardPreview } from './preview/DashboardPreview';
+import { getDataForEntityType } from '../shared/containers/profile/utils';
+import { SidebarDomainSection } from '../shared/containers/profile/sidebar/Domain/SidebarDomainSection';
+import { EntityMenuItems } from '../shared/EntityDropdown/EntityDropdown';
+import { LineageTab } from '../shared/tabs/Lineage/LineageTab';
+import { capitalizeFirstLetterOnly } from '../../shared/textUtil';
+import { DashboardStatsSummarySubHeader } from './profile/DashboardStatsSummarySubHeader';
+import { ChartSnippet } from '../chart/ChartSnippet';
+import { EmbedTab } from '../shared/tabs/Embed/EmbedTab';
+import EmbeddedProfile from '../shared/embed/EmbeddedProfile';
 
 /**
  * Definition of the DataHub Dashboard entity.
@@ -26,13 +34,13 @@ import { DashboardPreview } from './preview/DashboardPreview';
 export class DashboardEntity implements Entity<Dashboard> {
     type: EntityType = EntityType.Dashboard;
 
-    icon = (fontSize: number, styleType: IconStyleType) => {
+    icon = (fontSize: number, styleType: IconStyleType, color?: string) => {
         if (styleType === IconStyleType.TAB_VIEW) {
-            return <DashboardOutlined style={{ fontSize }} />;
+            return <DashboardOutlined style={{ fontSize, color }} />;
         }
 
         if (styleType === IconStyleType.HIGHLIGHT) {
-            return <DashboardFilled style={{ fontSize, color: 'rgb(144 163 236)' }} />;
+            return <DashboardFilled style={{ fontSize, color: color || 'rgb(144 163 236)' }} />;
         }
 
         if (styleType === IconStyleType.SVG) {
@@ -45,7 +53,7 @@ export class DashboardEntity implements Entity<Dashboard> {
             <DashboardOutlined
                 style={{
                     fontSize,
-                    color: '#BFBFBF',
+                    color: color || '#BFBFBF',
                 }}
             />
         );
@@ -71,20 +79,52 @@ export class DashboardEntity implements Entity<Dashboard> {
             entityType={EntityType.Dashboard}
             useEntityQuery={useGetDashboardQuery}
             useUpdateQuery={useUpdateDashboardMutation}
-            getOverrideProperties={this.getOverrideProperties}
+            getOverrideProperties={this.getOverridePropertiesFromEntity}
+            headerDropdownItems={new Set([EntityMenuItems.UPDATE_DEPRECATION])}
+            subHeader={{
+                component: DashboardStatsSummarySubHeader,
+            }}
             tabs={[
+                {
+                    name: 'Charts',
+                    component: DashboardChartsTab,
+                    display: {
+                        visible: (_, dashboard: GetDashboardQuery) =>
+                            (dashboard?.dashboard?.charts?.total || 0) > 0 ||
+                            (dashboard?.dashboard?.datasets?.total || 0) === 0,
+                        enabled: (_, dashboard: GetDashboardQuery) => (dashboard?.dashboard?.charts?.total || 0) > 0,
+                    },
+                },
+                {
+                    name: 'Datasets',
+                    component: DashboardDatasetsTab,
+                    display: {
+                        visible: (_, dashboard: GetDashboardQuery) => (dashboard?.dashboard?.datasets?.total || 0) > 0,
+                        enabled: (_, dashboard: GetDashboardQuery) => (dashboard?.dashboard?.datasets?.total || 0) > 0,
+                    },
+                },
                 {
                     name: 'Documentation',
                     component: DocumentationTab,
                 },
                 {
-                    name: 'Properties',
-                    component: PropertiesTab,
+                    name: 'Preview',
+                    component: EmbedTab,
+                    display: {
+                        visible: (_, dashboard: GetDashboardQuery) => !!dashboard?.dashboard?.embed?.renderUrl,
+                        enabled: (_, dashboard: GetDashboardQuery) => !!dashboard?.dashboard?.embed?.renderUrl,
+                    },
                 },
                 {
-                    name: 'Charts',
-                    component: DashboardChartsTab,
-                    shouldHide: (_, dashboard: GetDashboardQuery) => dashboard?.dashboard?.charts?.total === 0,
+                    name: 'Lineage',
+                    component: LineageTab,
+                    properties: {
+                        defaultDirection: LineageDirection.Upstream,
+                    },
+                },
+                {
+                    name: 'Properties',
+                    component: PropertiesTab,
                 },
             ]}
             sidebarSections={[
@@ -100,30 +140,26 @@ export class DashboardEntity implements Entity<Dashboard> {
                 },
                 {
                     component: SidebarOwnerSection,
+                    properties: {
+                        defaultOwnerType: OwnershipType.TechnicalOwner,
+                    },
+                },
+                {
+                    component: SidebarDomainSection,
                 },
             ]}
         />
     );
 
-    getOverrideProperties = (res: GetDashboardQuery): GenericEntityProperties => {
+    getOverridePropertiesFromEntity = (dashboard?: Dashboard | null): GenericEntityProperties => {
         // TODO: Get rid of this once we have correctly formed platform coming back.
-        const tool = res.dashboard?.tool || '';
-        const name = res.dashboard?.info?.name;
-        const externalUrl = res.dashboard?.info?.externalUrl;
+        const name = dashboard?.properties?.name;
+        const externalUrl = dashboard?.properties?.externalUrl;
+        const subTypes = dashboard?.subTypes;
         return {
-            ...res,
             name,
             externalUrl,
-            platform: {
-                urn: `urn:li:dataPlatform:(${tool})`,
-                type: EntityType.DataPlatform,
-                name: tool,
-                info: {
-                    logoUrl: getLogoFromPlatform(tool),
-                    type: PlatformType.Others,
-                    datasetNameDelimiter: '.',
-                },
-            },
+            entityTypeOverride: subTypes ? capitalizeFirstLetterOnly(subTypes.typeNames?.[0]) : '',
         };
     };
 
@@ -131,38 +167,103 @@ export class DashboardEntity implements Entity<Dashboard> {
         return (
             <DashboardPreview
                 urn={data.urn}
-                platform={data.tool}
-                name={data.info?.name}
-                description={data.editableProperties?.description || data.info?.description}
-                access={data.info?.access}
+                platform={data?.platform?.properties?.displayName || capitalizeFirstLetterOnly(data?.platform?.name)}
+                name={data.properties?.name}
+                description={data.editableProperties?.description || data.properties?.description}
+                access={data.properties?.access}
                 tags={data.globalTags || undefined}
                 owners={data.ownership?.owners}
                 glossaryTerms={data?.glossaryTerms}
+                logoUrl={data?.platform?.properties?.logoUrl}
+                domain={data.domain?.domain}
+                container={data.container}
+                parentContainers={data.parentContainers}
+                deprecation={data.deprecation}
+                externalUrl={data.properties?.externalUrl}
+                statsSummary={data.statsSummary}
+                lastUpdatedMs={data.properties?.lastModified?.time}
+                createdMs={data.properties?.created?.time}
+                subtype={data.subTypes?.typeNames?.[0]}
             />
         );
     };
 
     renderSearch = (result: SearchResult) => {
-        return this.renderPreview(PreviewType.SEARCH, result.entity as Dashboard);
+        const data = result.entity as Dashboard;
+
+        return (
+            <DashboardPreview
+                urn={data.urn}
+                platform={data?.platform?.properties?.displayName || capitalizeFirstLetterOnly(data?.platform?.name)}
+                name={data.properties?.name}
+                platformInstanceId={data.dataPlatformInstance?.instanceId}
+                description={data.editableProperties?.description || data.properties?.description}
+                access={data.properties?.access}
+                tags={data.globalTags || undefined}
+                owners={data.ownership?.owners}
+                glossaryTerms={data?.glossaryTerms}
+                insights={result.insights}
+                logoUrl={data?.platform?.properties?.logoUrl || ''}
+                domain={data.domain?.domain}
+                container={data.container}
+                parentContainers={data.parentContainers}
+                deprecation={data.deprecation}
+                externalUrl={data.properties?.externalUrl}
+                statsSummary={data.statsSummary}
+                lastUpdatedMs={data.properties?.lastModified?.time}
+                createdMs={data.properties?.created?.time}
+                snippet={
+                    <ChartSnippet
+                        isMatchingDashboard
+                        matchedFields={result.matchedFields}
+                        inputFields={data.inputFields}
+                    />
+                }
+                subtype={data.subTypes?.typeNames?.[0]}
+            />
+        );
     };
 
     getLineageVizConfig = (entity: Dashboard) => {
         return {
             urn: entity.urn,
-            name: entity.info?.name || '',
+            name: entity.properties?.name || entity.urn,
             type: EntityType.Dashboard,
-            upstreamChildren: getChildren({ entity, type: EntityType.Dashboard }, Direction.Upstream).map(
-                (child) => child.entity.urn,
-            ),
-            downstreamChildren: getChildren({ entity, type: EntityType.Dashboard }, Direction.Downstream).map(
-                (child) => child.entity.urn,
-            ),
-            icon: getLogoFromPlatform(entity.tool),
-            platform: entity.tool,
+            subtype: entity?.subTypes?.typeNames?.[0] || undefined,
+            icon: entity?.platform?.properties?.logoUrl || undefined,
+            platform: entity?.platform,
         };
     };
 
     displayName = (data: Dashboard) => {
-        return data.info?.name || data.urn;
+        return data.properties?.name || data.urn;
     };
+
+    getGenericEntityProperties = (data: Dashboard) => {
+        return getDataForEntityType({
+            data,
+            entityType: this.type,
+            getOverrideProperties: this.getOverridePropertiesFromEntity,
+        });
+    };
+
+    supportedCapabilities = () => {
+        return new Set([
+            EntityCapabilityType.OWNERS,
+            EntityCapabilityType.GLOSSARY_TERMS,
+            EntityCapabilityType.TAGS,
+            EntityCapabilityType.DOMAINS,
+            EntityCapabilityType.DEPRECATION,
+            EntityCapabilityType.SOFT_DELETE,
+        ]);
+    };
+
+    renderEmbeddedProfile = (urn: string) => (
+        <EmbeddedProfile
+            urn={urn}
+            entityType={EntityType.Dashboard}
+            useEntityQuery={useGetDashboardQuery}
+            getOverrideProperties={this.getOverridePropertiesFromEntity}
+        />
+    );
 }

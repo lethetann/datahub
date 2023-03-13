@@ -7,6 +7,7 @@ from datahub.metadata.com.linkedin.pegasus2avro.schema import (
     BytesType,
     DateType,
     EnumType,
+    MapType,
     NullType,
     NumberType,
     RecordType,
@@ -216,7 +217,6 @@ POSTGRES_MODIFIED_TYPES = {
 
 
 def resolve_postgres_modified_type(type_string: str) -> Any:
-
     if type_string.endswith("[]"):
         return ArrayType
 
@@ -225,6 +225,26 @@ def resolve_postgres_modified_type(type_string: str) -> Any:
             return POSTGRES_TYPES_MAP[modified_type_base]
 
     return None
+
+
+def resolve_trino_modified_type(type_string: str) -> Any:
+    # for cases like timestamp(3), decimal(10,0), row(...)
+    match = re.match(r"([a-zA-Z]+)\(.+\)", type_string)
+    if match:
+        modified_type_base: str = match.group(1)
+        return TRINO_SQL_TYPES_MAP[modified_type_base]
+    else:
+        return TRINO_SQL_TYPES_MAP[type_string]
+
+
+def resolve_vertica_modified_type(type_string: str) -> Any:
+    # for cases like timestamp(3), decimal(10,0)
+    match = re.match(r"([a-zA-Z ]+)\(.+\)", type_string)
+    if match:
+        modified_type_base: str = match.group(1)
+        return VERTICA_SQL_TYPES_MAP[modified_type_base]
+    else:
+        return VERTICA_SQL_TYPES_MAP[type_string]
 
 
 # see https://docs.snowflake.com/en/sql-reference/intro-summary-data-types.html
@@ -263,7 +283,7 @@ SNOWFLAKE_TYPES_MAP: Dict[str, Any] = {
     "GEOGRAPHY": None,
 }
 
-# see https://github.com/googleapis/python-bigquery-sqlalchemy/blob/master/pybigquery/sqlalchemy_bigquery.py#L111
+# see https://github.com/googleapis/python-bigquery-sqlalchemy/blob/main/sqlalchemy_bigquery/_types.py#L32
 BIGQUERY_TYPES_MAP: Dict[str, Any] = {
     "STRING": StringType,
     "BOOL": BooleanType,
@@ -281,4 +301,94 @@ BIGQUERY_TYPES_MAP: Dict[str, Any] = {
     "NUMERIC": NumberType,
     "BIGNUMERIC": NumberType,
     "GEOGRAPHY": None,
+}
+
+# see https://spark.apache.org/docs/latest/sql-ref-datatypes.html
+SPARK_SQL_TYPES_MAP: Dict[str, Any] = {
+    "boolean": BooleanType,
+    "byte": NumberType,
+    "tinyint": NumberType,
+    "short": NumberType,
+    "smallint": NumberType,
+    "int": NumberType,
+    "integer": NumberType,
+    "long": NumberType,
+    "bigint": NumberType,
+    "float": NumberType,
+    "real": NumberType,
+    "double": NumberType,
+    "date": DateType,
+    "timestamp": TimeType,
+    "string": StringType,
+    "binary": BytesType,
+    "decimal": NumberType,
+    "dec": NumberType,
+    "numeric": NumberType,
+    "array": ArrayType,
+    "struct": RecordType,
+    "map": RecordType,
+}
+
+# https://trino.io/docs/current/language/types.html
+# https://github.com/trinodb/trino-python-client/blob/master/trino/sqlalchemy/datatype.py#L75
+TRINO_SQL_TYPES_MAP: Dict[str, Any] = {
+    "boolean": BooleanType,
+    "tinyint": NumberType,
+    "smallint": NumberType,
+    "int": NumberType,
+    "integer": NumberType,
+    "bigint": NumberType,
+    "real": NumberType,
+    "double": NumberType,
+    "decimal": NumberType,
+    "varchar": StringType,
+    "char": StringType,
+    "varbinary": BytesType,
+    "json": RecordType,
+    "date": DateType,
+    "time": TimeType,
+    "timestamp": TimeType,
+    "row": RecordType,
+    "map": MapType,
+    "array": ArrayType,
+}
+
+# https://www.vertica.com/docs/11.1.x/HTML/Content/Authoring/SQLReferenceManual/DataTypes/SQLDataTypes.htm
+VERTICA_SQL_TYPES_MAP: Dict[str, Any] = {
+    "binary": BytesType,
+    "varbinary": BytesType,
+    "long varbinary": BytesType,
+    "bytea": BytesType,
+    "raw": BytesType,
+    "boolean": BooleanType,
+    "char": StringType,
+    "varchar": StringType,
+    "long varchar": StringType,
+    "date": DateType,
+    "time": TimeType,
+    "datetime": TimeType,
+    "smalldatetime": TimeType,
+    "time with timezone": TimeType,
+    "timestamp": TimeType,
+    "timestamptz": TimeType,
+    "timestamp with timezone": TimeType,
+    "interval": TimeType,
+    "interval hour to second": TimeType,
+    "double precision": NumberType,
+    "float": NumberType,
+    "float8": NumberType,
+    "real": NumberType,
+    "integer": NumberType,
+    "int": NumberType,
+    "bigint": NumberType,
+    "int8": NumberType,
+    "smallint": NumberType,
+    "tinyint": NumberType,
+    "decimal": NumberType,
+    "numeric": NumberType,
+    "number": NumberType,
+    "money": NumberType,
+    "geometry": None,
+    "geography": None,
+    "uuid": StringType,
 }

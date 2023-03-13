@@ -1,17 +1,18 @@
 package com.linkedin.metadata.timeseries.elastic.query;
 
+import com.datahub.util.exception.ESQueryException;
 import com.google.common.collect.ImmutableList;
 import com.linkedin.data.schema.DataSchema;
 import com.linkedin.data.template.StringArray;
 import com.linkedin.data.template.StringArrayArray;
-import com.linkedin.metadata.dao.exception.ESQueryException;
 import com.linkedin.metadata.models.AspectSpec;
 import com.linkedin.metadata.models.EntitySpec;
 import com.linkedin.metadata.models.TimeseriesFieldCollectionSpec;
 import com.linkedin.metadata.models.TimeseriesFieldSpec;
 import com.linkedin.metadata.models.registry.EntityRegistry;
-import com.linkedin.metadata.query.Filter;
-import com.linkedin.metadata.utils.elasticsearch.ESUtils;
+import com.linkedin.metadata.query.filter.Filter;
+import com.linkedin.metadata.search.utils.ESUtils;
+import com.linkedin.metadata.timeseries.elastic.indexbuilder.MappingsBuilder;
 import com.linkedin.metadata.utils.elasticsearch.IndexConvention;
 import com.linkedin.timeseries.AggregationSpec;
 import com.linkedin.timeseries.GenericTable;
@@ -55,7 +56,7 @@ public class ESAggregatedStatsDAO {
   private static final String ES_TERMS_AGGREGATION_PREFIX = "terms_";
   private static final String ES_MAX_AGGREGATION_PREFIX = "max_";
   private static final String ES_FIELD_TIMESTAMP = "timestampMillis";
-  private static final String ES_KEYWORD_SUFFIX = ".keyword";
+  private static final String ES_FIELD_URN = "urn";
   private static final String ES_AGG_TIMESTAMP = ES_AGGREGATION_PREFIX + ES_FIELD_TIMESTAMP;
   private static final String ES_AGG_MAX_TIMESTAMP =
       ES_AGGREGATION_PREFIX + ES_MAX_AGGREGATION_PREFIX + ES_FIELD_TIMESTAMP;
@@ -172,6 +173,13 @@ public class ESAggregatedStatsDAO {
     if (fieldPath.equals(ES_FIELD_TIMESTAMP)) {
       return DataSchema.Type.LONG;
     }
+    if (fieldPath.equals(ES_FIELD_URN)) {
+      return DataSchema.Type.STRING;
+    }
+    if (fieldPath.equals(MappingsBuilder.EVENT_GRANULARITY)) {
+      return DataSchema.Type.RECORD;
+    }
+    
     String[] memberParts = fieldPath.split("\\.");
     if (memberParts.length == 1) {
       // Search in the timeseriesFieldSpecs.
@@ -186,6 +194,16 @@ public class ESAggregatedStatsDAO {
         return timeseriesFieldCollectionSpec.getPegasusSchema().getType();
       }
     } else if (memberParts.length == 2) {
+      // Check if partitionSpec
+      if (memberParts[0].equals(MappingsBuilder.PARTITION_SPEC)) {
+        if (memberParts[1].equals(MappingsBuilder.PARTITION_SPEC_PARTITION) || memberParts[1].equals(
+            MappingsBuilder.PARTITION_SPEC_TIME_PARTITION)) {
+          return DataSchema.Type.STRING;
+        } else {
+          throw new IllegalArgumentException("Unknown partitionSpec member" + memberParts[1]);
+        }
+      }
+
       // This is either a collection key/stat.
       TimeseriesFieldCollectionSpec timeseriesFieldCollectionSpec =
           aspectSpec.getTimeseriesFieldCollectionSpecMap().get(memberParts[0]);
@@ -324,7 +342,7 @@ public class ESAggregatedStatsDAO {
       @Nullable GroupingBucket[] groupingBuckets) {
 
     // Setup the filter query builder using the input filter provided.
-    final BoolQueryBuilder filterQueryBuilder = ESUtils.buildFilterQuery(filter);
+    final BoolQueryBuilder filterQueryBuilder = ESUtils.buildFilterQuery(filter, true);
     // Create the high-level aggregation builder with the filter.
     final AggregationBuilder filteredAggBuilder = AggregationBuilders.filter(ES_FILTERED_STATS, filterQueryBuilder);
 
@@ -362,9 +380,6 @@ public class ESAggregatedStatsDAO {
       AggregationSpec aggregationSpec) {
     String fieldPath = aggregationSpec.getFieldPath();
     String esFieldName = fieldPath;
-    if (!isIntegralType(getAggregationSpecMemberType(aspectSpec, aggregationSpec))) {
-      esFieldName += ES_KEYWORD_SUFFIX;
-    }
 
     switch (aggregationSpec.getAggregationType()) {
       case LATEST:
@@ -413,11 +428,9 @@ public class ESAggregatedStatsDAO {
             .calendarInterval(getHistogramInterval(curGroupingBucket.getTimeWindowSize()));
       } else if (curGroupingBucket.getType() == GroupingBucketType.STRING_GROUPING_BUCKET) {
         // Process the string grouping bucket using the 'terms' aggregation.
-        String fieldName = curGroupingBucket.getKey();
+        // The field can be Keyword, Numeric, ip, boolean, or binary.
+        String fieldName = ESUtils.toKeywordField(curGroupingBucket.getKey(), true);
         DataSchema.Type fieldType = getGroupingBucketKeyType(aspectSpec, curGroupingBucket);
-        if (!isIntegralType(fieldType)) {
-          fieldName += ES_KEYWORD_SUFFIX;
-        }
         curAggregationBuilder = AggregationBuilders.terms(getGroupingBucketAggName(curGroupingBucket))
             .field(fieldName)
             .size(MAX_TERM_BUCKETS)
@@ -428,18 +441,6 @@ public class ESAggregatedStatsDAO {
     }
 
     return lastAggregationBuilder;
-  }
-
-  private boolean isIntegralType(DataSchema.Type fieldType) {
-    switch (fieldType) {
-      case INT:
-      case FLOAT:
-      case DOUBLE:
-      case LONG:
-        return true;
-      default:
-        return false;
-    }
   }
 
   private GenericTable generateResponseFromElastic(SearchResponse searchResponse, GroupingBucket[] groupingBuckets,

@@ -1,48 +1,31 @@
-import { Typography, Image, Button } from 'antd';
 import React from 'react';
-import { Link } from 'react-router-dom';
-import styled from 'styled-components';
+import styled from 'styled-components/macro';
+import { useEntityData, useRefetch } from '../../../EntityContext';
+import { EntityHealthStatus } from './EntityHealthStatus';
+import EntityDropdown, { EntityMenuItems } from '../../../EntityDropdown/EntityDropdown';
+import PlatformContent from './PlatformContent';
+import { getPlatformName } from '../../../utils';
+import { useGetAuthenticatedUser } from '../../../../../useGetAuthenticatedUser';
+import { EntityType, PlatformPrivileges } from '../../../../../../types.generated';
+import EntityCount from './EntityCount';
+import EntityName from './EntityName';
+import { DeprecationPill } from '../../../components/styled/DeprecationPill';
+import CompactContext from '../../../../../shared/CompactContext';
+import { EntitySubHeaderSection, GenericEntityProperties } from '../../../types';
+import EntityActions, { EntityActionItem } from '../../../entity/EntityActions';
+import ExternalUrlButton from '../../../ExternalUrlButton';
+import ShareButton from '../../../../../shared/share/ShareButton';
+import { capitalizeFirstLetterOnly } from '../../../../../shared/textUtil';
 
-import { capitalizeFirstLetter } from '../../../../../shared/capitalizeFirstLetter';
-import { useEntityRegistry } from '../../../../../useEntityRegistry';
-import { ANTD_GRAY } from '../../../constants';
-import { useEntityData } from '../../../EntityContext';
-import { useEntityPath } from '../utils';
-
-const PreviewImage = styled(Image)`
-    max-height: 17px;
-    width: auto;
-    object-fit: contain;
-    margin-right: 10px;
-    background-color: transparent;
-`;
-
-const EntityTitle = styled(Typography.Title)`
-    &&& {
-        margin-bottom: 0;
-    }
-`;
-
-const PlatformContent = styled.div`
+const TitleWrapper = styled.div`
     display: flex;
+    justify-content: left;
     align-items: center;
-    margin-bottom: 8px;
-`;
 
-const PlatformText = styled(Typography.Text)`
-    font-size: 12px;
-    line-height: 20px;
-    font-weight: 700;
-    color: ${ANTD_GRAY[7]};
-`;
-
-const PlatformDivider = styled.div`
-    display: inline-block;
-    padding-left: 10px;
-    margin-right: 10px;
-    border-right: 1px solid ${ANTD_GRAY[4]};
-    height: 18px;
-    vertical-align: text-top;
+    .ant-typography-edit-content {
+        padding-top: 7px;
+        margin-left: 15px;
+    }
 `;
 
 const HeaderContainer = styled.div`
@@ -54,34 +37,115 @@ const HeaderContainer = styled.div`
 
 const MainHeaderContent = styled.div`
     flex: 1;
+    width: 85%;
+
+    .entityCount {
+        margin: 5px 0 -4px 0;
+    }
 `;
 
-export const EntityHeader = () => {
-    const { urn, entityType, entityData } = useEntityData();
-    const entityRegistry = useEntityRegistry();
+const SideHeaderContent = styled.div`
+    display: flex;
+    flex-direction: column;
+`;
 
-    const platformName = capitalizeFirstLetter(entityData?.platform?.name);
-    const platformLogoUrl = entityData?.platform?.info?.logoUrl;
-    const entityTypeCased = entityRegistry.getEntityName(entityType);
-    const entityPath = useEntityPath(entityType, urn);
+const TopButtonsWrapper = styled.div`
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 8px;
+`;
+
+export function getCanEditName(
+    entityType: EntityType,
+    entityData: GenericEntityProperties | null,
+    privileges?: PlatformPrivileges,
+) {
+    switch (entityType) {
+        case EntityType.GlossaryTerm:
+        case EntityType.GlossaryNode:
+            return privileges?.manageGlossaries || !!entityData?.privileges?.canManageEntity;
+        case EntityType.Domain:
+            return privileges?.manageDomains;
+        default:
+            return false;
+    }
+}
+
+type Props = {
+    headerDropdownItems?: Set<EntityMenuItems>;
+    headerActionItems?: Set<EntityActionItem>;
+    isNameEditable?: boolean;
+    subHeader?: EntitySubHeaderSection;
+};
+
+export const EntityHeader = ({ headerDropdownItems, headerActionItems, isNameEditable, subHeader }: Props) => {
+    const { urn, entityType, entityData } = useEntityData();
+    const refetch = useRefetch();
+    const me = useGetAuthenticatedUser();
+    const platformName = getPlatformName(entityData);
     const externalUrl = entityData?.externalUrl || undefined;
-    const hasExternalUrl = !!externalUrl;
+    const entityCount = entityData?.entityCount;
+    const isCompact = React.useContext(CompactContext);
+
+    const entityName = entityData?.name;
+    const subType = capitalizeFirstLetterOnly(entityData?.subTypes?.typeNames?.[0]) || undefined;
+
+    const canEditName =
+        isNameEditable && getCanEditName(entityType, entityData, me?.platformPrivileges as PlatformPrivileges);
+
     return (
-        <HeaderContainer>
-            <MainHeaderContent>
-                <PlatformContent>
-                    <span>
-                        {!!platformLogoUrl && <PreviewImage preview={false} src={platformLogoUrl} alt={platformName} />}
-                    </span>
-                    <PlatformText>{platformName}</PlatformText>
-                    <PlatformDivider />
-                    <PlatformText>{entityData?.entityTypeOverride || entityTypeCased}</PlatformText>
-                </PlatformContent>
-                <Link to={entityPath}>
-                    <EntityTitle level={3}>{entityData?.name || ' '}</EntityTitle>
-                </Link>
-            </MainHeaderContent>
-            {hasExternalUrl && <Button href={externalUrl}>View in {platformName}</Button>}
-        </HeaderContainer>
+        <>
+            <HeaderContainer data-testid="entity-header-test-id">
+                <MainHeaderContent>
+                    <PlatformContent />
+                    <TitleWrapper>
+                        <EntityName isNameEditable={canEditName} />
+                        {entityData?.deprecation?.deprecated && (
+                            <DeprecationPill
+                                urn={urn}
+                                deprecation={entityData?.deprecation}
+                                showUndeprecate
+                                preview={isCompact}
+                                refetch={refetch}
+                            />
+                        )}
+                        {entityData?.health?.map((health) => (
+                            <EntityHealthStatus
+                                type={health.type}
+                                status={health.status}
+                                message={health.message || undefined}
+                            />
+                        ))}
+                    </TitleWrapper>
+                    <EntityCount entityCount={entityCount} />
+                </MainHeaderContent>
+                <SideHeaderContent>
+                    <TopButtonsWrapper>
+                        {externalUrl && (
+                            <ExternalUrlButton
+                                externalUrl={externalUrl}
+                                entityUrn={urn}
+                                platformName={platformName}
+                                entityType={entityType}
+                            />
+                        )}
+                        {headerActionItems && (
+                            <EntityActions urn={urn} actionItems={headerActionItems} refetchForEntity={refetch} />
+                        )}
+                        <ShareButton entityType={entityType} subType={subType} urn={urn} name={entityName} />
+                        {headerDropdownItems && (
+                            <EntityDropdown
+                                urn={urn}
+                                entityType={entityType}
+                                entityData={entityData}
+                                menuItems={headerDropdownItems}
+                                refetchForEntity={refetch}
+                            />
+                        )}
+                    </TopButtonsWrapper>
+                </SideHeaderContent>
+            </HeaderContainer>
+            {subHeader && <subHeader.component />}
+        </>
     );
 };

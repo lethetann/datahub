@@ -39,6 +39,8 @@ public final class TopicConventionImpl implements TopicConvention {
   private final String _metadataChangeLogVersionedTopicName;
   private final String _metadataChangeLogTimeseriesTopicName;
   private final String _failedMetadataChangeProposalTopicName;
+  private final String _platformEventTopicName;
+  private final String _dataHubUpgradeHistoryTopicName;
 
   // v5 patterns
   private final String _eventPattern;
@@ -46,7 +48,8 @@ public final class TopicConventionImpl implements TopicConvention {
   public TopicConventionImpl(@Nonnull String metadataChangeEventTopicName, @Nonnull String metadataAuditEventTopicName,
       @Nonnull String failedMetadataChangeEventTopicName, @Nonnull String metadataChangeProposalTopicName,
       @Nonnull String metadataChangeLogVersionedTopicName, @Nonnull String metadataChangeLogTimeseriesTopicName,
-      @Nonnull String failedMetadataChangeProposalTopicName, @Nonnull String eventPattern) {
+      @Nonnull String failedMetadataChangeProposalTopicName, @Nonnull String platformEventTopicName,
+      @Nonnull String eventPattern, @Nonnull String dataHubUpgradeHistoryTopicName) {
     _metadataChangeEventTopicName = metadataChangeEventTopicName;
     _metadataAuditEventTopicName = metadataAuditEventTopicName;
     _failedMetadataChangeEventTopicName = failedMetadataChangeEventTopicName;
@@ -54,13 +57,15 @@ public final class TopicConventionImpl implements TopicConvention {
     _metadataChangeLogVersionedTopicName = metadataChangeLogVersionedTopicName;
     _metadataChangeLogTimeseriesTopicName = metadataChangeLogTimeseriesTopicName;
     _failedMetadataChangeProposalTopicName = failedMetadataChangeProposalTopicName;
+    _platformEventTopicName = platformEventTopicName;
     _eventPattern = eventPattern;
+    _dataHubUpgradeHistoryTopicName = dataHubUpgradeHistoryTopicName;
   }
 
   public TopicConventionImpl() {
     this(Topics.METADATA_CHANGE_EVENT, Topics.METADATA_AUDIT_EVENT, Topics.FAILED_METADATA_CHANGE_EVENT,
         Topics.METADATA_CHANGE_PROPOSAL, Topics.METADATA_CHANGE_LOG_VERSIONED, Topics.METADATA_CHANGE_LOG_TIMESERIES,
-        Topics.FAILED_METADATA_CHANGE_PROPOSAL, DEFAULT_EVENT_PATTERN);
+        Topics.FAILED_METADATA_CHANGE_PROPOSAL, Topics.PLATFORM_EVENT, DEFAULT_EVENT_PATTERN, Topics.DATAHUB_UPGRADE_HISTORY_TOPIC_NAME);
   }
 
   @Nonnull
@@ -106,6 +111,12 @@ public final class TopicConventionImpl implements TopicConvention {
   }
 
   @Nonnull
+  @Override
+  public String getPlatformEventTopicName() {
+    return _platformEventTopicName;
+  }
+
+  @Nonnull
   private String buildEventName(@Nonnull String eventType, @Nonnull String entityName, @Nonnull String aspectName,
       int version) {
     return _eventPattern.replace(EVENT_TYPE_PLACEHOLDER, eventType)
@@ -128,6 +139,11 @@ public final class TopicConventionImpl implements TopicConvention {
   @Override
   public String getMetadataChangeEventTopicName(@Nonnull Urn urn, @Nonnull RecordTemplate aspect) {
     return buildEventName(METADATA_CHANGE_EVENT_TYPE, urn, aspect);
+  }
+
+  @Override
+  public String getDataHubUpgradeHistoryTopicName() {
+    return _dataHubUpgradeHistoryTopicName;
   }
 
   @Override

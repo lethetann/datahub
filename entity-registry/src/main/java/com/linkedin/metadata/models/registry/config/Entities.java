@@ -10,5 +10,7 @@ import lombok.Value;
 @NoArgsConstructor(force = true, access = AccessLevel.PRIVATE)
 @AllArgsConstructor
 public class Entities {
+  String id;
   List<Entity> entities;
+  List<Event> events;
 }

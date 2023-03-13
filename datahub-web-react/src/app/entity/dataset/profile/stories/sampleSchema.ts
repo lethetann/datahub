@@ -113,6 +113,7 @@ export const sampleSchemaWithTags: Schema = {
                             description: 'this is a legacy dataset',
                             type: EntityType.Tag,
                         },
+                        associatedUrn: 'mock:urn',
                     },
                 ],
             },
@@ -121,14 +122,17 @@ export const sampleSchemaWithTags: Schema = {
                     {
                         term: {
                             type: EntityType.GlossaryTerm,
-                            urn: 'urn:li:glossaryTerm:sample-glossary-term',
                             name: 'sample-glossary-term',
+                            urn: 'urn:li:glossaryTerm:sample-glossary-term',
                             hierarchicalName: 'example.sample-glossary-term',
-                            glossaryTermInfo: {
+                            properties: {
+                                name: 'sample-glossary-term',
+                                description: 'sample definition',
                                 definition: 'sample definition',
                                 termSource: 'sample term source',
                             },
                         },
+                        associatedUrn: 'mock:urn',
                     },
                 ],
             },
@@ -200,14 +204,16 @@ export const sampleSchemaWithPkFk: SchemaMetadata = {
             sourceFields: [
                 {
                     urn: 'datasetUrn',
-                    parent: 'dataset',
+                    type: EntityType.Dataset,
+                    parent: { urn: 'test', type: EntityType.Dataset },
                     fieldPath: 'shipping_address',
                 },
             ],
             foreignFields: [
                 {
                     urn: dataset3.urn,
-                    parent: dataset3.name,
+                    type: EntityType.Dataset,
+                    parent: { urn: dataset3.name, type: EntityType.Dataset },
                     fieldPath: 'address',
                 },
             ],
@@ -235,6 +241,7 @@ export const sampleSchemaWithPkFk: SchemaMetadata = {
                             description: 'this is a legacy dataset',
                             type: EntityType.Tag,
                         },
+                        associatedUrn: 'mock:urn',
                     },
                 ],
             },
@@ -246,11 +253,14 @@ export const sampleSchemaWithPkFk: SchemaMetadata = {
                             urn: 'urn:li:glossaryTerm:sample-glossary-term',
                             name: 'sample-glossary-term',
                             hierarchicalName: 'example.sample-glossary-term',
-                            glossaryTermInfo: {
+                            properties: {
+                                name: 'sample-glossary-term',
+                                description: 'sample definition',
                                 definition: 'sample definition',
                                 termSource: 'sample term source',
                             },
                         },
+                        associatedUrn: 'mock:urn',
                     },
                 ],
             },
@@ -309,6 +319,47 @@ export const sampleSchemaWithPkFk: SchemaMetadata = {
             description: 'struct representing the payment information',
             type: SchemaFieldDataType.Struct,
             nativeDataType: 'struct',
+            recursive: false,
+        } as SchemaField,
+    ],
+};
+
+export const sampleSchemaWithoutFields: SchemaMetadata | Schema | null = {
+    name: 'MockSchema',
+    platformUrn: 'mock:urn',
+    version: 1,
+    hash: '',
+    fields: [],
+};
+
+export const sampleSchemaWithKeyValueFields: SchemaMetadata | Schema | null = {
+    name: 'MockSchema',
+    platformUrn: 'mock:urn',
+    version: 1,
+    hash: '',
+    fields: [
+        {
+            fieldPath: '[key=True].[version=2.0].id',
+            nullable: true,
+            description: 'the number of items in the order',
+            type: SchemaFieldDataType.Number,
+            nativeDataType: 'number',
+            recursive: false,
+        },
+        {
+            fieldPath: 'count',
+            nullable: true,
+            description: 'the number of items in the order',
+            type: SchemaFieldDataType.Number,
+            nativeDataType: 'number',
+            recursive: false,
+        },
+        {
+            fieldPath: 'cost',
+            nullable: true,
+            description: 'the dollar value of the order',
+            type: SchemaFieldDataType.Number,
+            nativeDataType: 'number',
             recursive: false,
         } as SchemaField,
     ],

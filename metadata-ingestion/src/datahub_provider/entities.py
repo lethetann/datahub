@@ -3,17 +3,10 @@ from abc import abstractmethod
 import attr
 
 import datahub.emitter.mce_builder as builder
+from datahub.utilities.urns.urn import guess_entity_type
 
 
 class _Entity:
-    def set_context(self, context):
-        # Required for compat with Airflow 1.10.x
-        pass
-
-    def as_dict(self):
-        # Required for compat with Airflow 1.10.x
-        return attr.asdict(self)
-
     @property
     @abstractmethod
     def urn(self) -> str:
@@ -29,3 +22,20 @@ class Dataset(_Entity):
     @property
     def urn(self):
         return builder.make_dataset_urn(self.platform, self.name, self.env)
+
+
+@attr.s(str=True)
+class Urn(_Entity):
+    _urn: str = attr.ib()
+
+    @_urn.validator
+    def _validate_urn(self, attribute, value):
+        if not value.startswith("urn:"):
+            raise ValueError("invalid urn provided: urns must start with 'urn:'")
+        if guess_entity_type(value) != "dataset":
+            # This is because DataJobs only support Dataset lineage.
+            raise ValueError("Airflow lineage currently only supports datasets")
+
+    @property
+    def urn(self):
+        return self._urn

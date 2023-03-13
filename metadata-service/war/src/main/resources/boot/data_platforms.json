@@ -6,7 +6,7 @@
       "name": "adlsGen1",
       "displayName": "Azure Data Lake (Gen 1)",
       "type": "FILE_SYSTEM",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/adlslogo.png"
+      "logoUrl": "/assets/platforms/adlslogo.png"
     }
   },
   {
@@ -16,7 +16,17 @@
       "name": "adlsGen2",
       "displayName": "Azure Data Lake (Gen 2)",
       "type": "FILE_SYSTEM",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/adlslogo.png"
+      "logoUrl": "/assets/platforms/adlslogo.png"
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:airflow",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "airflow",
+      "displayName": "Airflow",
+      "type": "OTHERS",
+      "logoUrl": "/assets/platforms/airflowlogo.png"
     }
   },
   {
@@ -29,13 +39,23 @@
     }
   },
   {
+    "urn": "urn:li:dataPlatform:clickhouse",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "clickhouse",
+      "displayName": "ClickHouse",
+      "type": "RELATIONAL_DB",
+      "logoUrl": "/assets/platforms/clickhouselogo.png"
+    }
+  },
+  {
     "urn": "urn:li:dataPlatform:couchbase",
     "aspect": {
       "datasetNameDelimiter": ".",
       "name": "couchbase",
       "displayName": "Couchbase",
       "type": "KEY_VALUE_STORE",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/couchbaselogo.png"
+      "logoUrl": "/assets/platforms/couchbaselogo.png"
     }
   },
   {
@@ -54,7 +74,17 @@
       "name": "hdfs",
       "displayName": "HDFS",
       "type": "FILE_SYSTEM",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/hadooplogo.png"
+      "logoUrl": "/assets/platforms/hadooplogo.png"
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:hana",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "hana",
+      "displayName": "SAP HANA",
+      "type": "RELATIONAL_DB",
+      "logoUrl": "/assets/platforms/hanalogo.png"
     }
   },
   {
@@ -64,7 +94,17 @@
       "name": "hive",
       "displayName": "Hive",
       "type": "FILE_SYSTEM",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/hivelogo.png"
+      "logoUrl": "/assets/platforms/hivelogo.png"
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:iceberg",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "iceberg",
+      "displayName": "Iceberg",
+      "type": "FILE_SYSTEM",
+      "logoUrl": "/assets/platforms/iceberglogo.png"
     }
   },
   {
@@ -74,7 +114,7 @@
       "name": "s3",
       "displayName": "AWS S3",
       "type": "FILE_SYSTEM",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/s3.png"
+      "logoUrl": "/assets/platforms/s3.png"
     }
   },
   {
@@ -84,7 +124,17 @@
       "name": "kafka",
       "displayName": "Kafka",
       "type": "MESSAGE_BROKER",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/kafkalogo.png"
+      "logoUrl": "/assets/platforms/kafkalogo.png"
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:kafka-connect",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "kafka-connect",
+      "displayName": "Kafka Connect",
+      "type": "OTHERS",
+      "logoUrl": "/assets/platforms/kafkalogo.png"
     }
   },
   {
@@ -94,7 +144,17 @@
       "name": "kusto",
       "displayName": "Kusto",
       "type": "OLAP_DATASTORE",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/kustologo.png"
+      "logoUrl": "/assets/platforms/kustologo.png"
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:mode",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "mode",
+      "displayName": "Mode",
+      "type": "KEY_VALUE_STORE",
+      "logoUrl": "/assets/platforms/modelogo.png"
     }
   },
   {
@@ -104,7 +164,7 @@
       "name": "mongodb",
       "displayName": "MongoDB",
       "type": "KEY_VALUE_STORE",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/mongodblogo.png"
+      "logoUrl": "/assets/platforms/mongodblogo.png"
     }
   },
   {
@@ -114,7 +174,27 @@
       "name": "mysql",
       "displayName": "MySQL",
       "type": "RELATIONAL_DB",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/mysqllogo.png"
+      "logoUrl": "/assets/platforms/mysqllogo.png"
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:mariadb",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "mariadb",
+      "displayName": "MariaDB",
+      "type": "RELATIONAL_DB",
+      "logoUrl": "/assets/platforms/mariadblogo.png"
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:OpenApi",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "openapi",
+      "displayName": "OpenAPI",
+      "type": "OTHERS",
+      "logoUrl": "/assets/platforms/openapilogo.png"
     }
   },
   {
@@ -124,7 +204,7 @@
       "name": "oracle",
       "displayName": "Oracle",
       "type": "RELATIONAL_DB",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/oraclelogo.png"
+      "logoUrl": "/assets/platforms/oraclelogo.png"
     }
   },
   {
@@ -134,7 +214,7 @@
       "name": "pinot",
       "displayName": "Pinot",
       "type": "OLAP_DATASTORE",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/pinotlogo.png"
+      "logoUrl": "/assets/platforms/pinotlogo.png"
     }
   },
   {
@@ -144,7 +224,7 @@
       "name": "postgres",
       "displayName": "PostgreSQL",
       "type": "RELATIONAL_DB",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/postgreslogo.png"
+      "logoUrl": "/assets/platforms/postgreslogo.png"
     }
   },
   {
@@ -154,7 +234,17 @@
       "name": "presto",
       "displayName": "Presto",
       "type": "QUERY_ENGINE",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/prestologo.png"
+      "logoUrl": "/assets/platforms/prestologo.png"
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:tableau",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "tableau",
+      "displayName": "Tableau",
+      "type": "OTHERS",
+      "logoUrl": "/assets/platforms/tableaulogo.png"
     }
   },
   {
@@ -164,7 +254,7 @@
       "name": "teradata",
       "displayName": "Teradata",
       "type": "RELATIONAL_DB",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/teradatalogo.png"
+      "logoUrl": "/assets/platforms/teradatalogo.png"
     }
   },
   {
@@ -183,7 +273,7 @@
       "name": "snowflake",
       "displayName": "Snowflake",
       "type": "RELATIONAL_DB",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/snowflakelogo.png"
+      "logoUrl": "/assets/platforms/snowflakelogo.png"
     }
   },
   {
@@ -193,7 +283,7 @@
       "name": "redshift",
       "displayName": "Redshift",
       "type": "RELATIONAL_DB",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/redshiftlogo.png"
+      "logoUrl": "/assets/platforms/redshiftlogo.png"
     }
   },
   {
@@ -203,7 +293,7 @@
       "name": "mssql",
       "displayName": "SQL Server",
       "type": "RELATIONAL_DB",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/mssqllogo.png"
+      "logoUrl": "/assets/platforms/mssqllogo.png"
     }
   },
   {
@@ -213,7 +303,7 @@
       "name": "bigquery",
       "displayName": "BigQuery",
       "type": "RELATIONAL_DB",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/bigquerylogo.png"
+      "logoUrl": "/assets/platforms/bigquerylogo.png"
     }
   },
   {
@@ -223,7 +313,7 @@
       "name": "druid",
       "displayName": "Druid",
       "type": "OLAP_DATASTORE",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/druidlogo.png"
+      "logoUrl": "/assets/platforms/druidlogo.png"
     }
   },
   {
@@ -233,7 +323,7 @@
       "name": "looker",
       "displayName": "Looker",
       "type": "OTHERS",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/lookerlogo.png"
+      "logoUrl": "/assets/platforms/lookerlogo.png"
     }
   },
   {
@@ -243,7 +333,7 @@
       "name": "feast",
       "displayName": "Feast",
       "type": "OTHERS",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/feastlogo.png"
+      "logoUrl": "/assets/platforms/feastlogo.png"
     }
   },
   {
@@ -253,7 +343,7 @@
       "name": "sagemaker",
       "displayName": "SageMaker",
       "type": "OTHERS",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/sagemakerlogo.png"
+      "logoUrl": "/assets/platforms/sagemakerlogo.png"
     }
   },
   {
@@ -263,7 +353,7 @@
       "name": "glue",
       "displayName": "Glue",
       "type": "OTHERS",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/gluelogo.png"
+      "logoUrl": "/assets/platforms/gluelogo.png"
     }
   },
   {
@@ -273,7 +363,7 @@
       "name": "redash",
       "displayName": "Redash",
       "type": "OTHERS",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/redashlogo.png"
+      "logoUrl": "/assets/platforms/redashlogo.png"
     }
   },
   {
@@ -283,7 +373,166 @@
       "name": "athena",
       "displayName": "AWS Athena",
       "type": "RELATIONAL_DB",
-      "logoUrl": "https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/awsathenalogo.png"
+      "logoUrl": "/assets/platforms/awsathenalogo.png"
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:spark",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "spark",
+      "displayName": "Spark",
+      "type": "OTHERS",
+      "logoUrl": "/assets/platforms/sparklogo.png"
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:dbt",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "dbt",
+      "displayName": "dbt",
+      "type": "OTHERS",
+      "logoUrl": "/assets/platforms/dbtlogo.png"
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:elasticsearch",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "elasticsearch",
+      "displayName": "Elasticsearch",
+      "type": "OTHERS",
+      "logoUrl": "/assets/platforms/elasticsearchlogo.png"
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:great-expectations",
+    "aspect": {
+      "name": "Great Expectations",
+      "displayName": "Great Expectations",
+      "type": "OTHERS",
+      "logoUrl": "/assets/platforms/greatexpectationslogo.png",
+      "datasetNameDelimiter": "."
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:powerbi",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "powerbi",
+      "displayName": "Power BI",
+      "type": "OTHERS",
+      "logoUrl": "/assets/platforms/powerbilogo.png"
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:presto_on_hive",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "presto-on-hive",
+      "displayName": "Presto on Hive",
+      "type": "FILE_SYSTEM",
+      "logoUrl": "/assets/platforms/prestoonhivelogo.png"
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:metabase",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "metabase",
+      "displayName": "Metabase",
+      "type": "OTHERS",
+      "logoUrl": "/assets/platforms/metabaselogo.svg"
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:nifi",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "nifi",
+      "displayName": "NiFi",
+      "type": "OTHERS",
+      "logoUrl": "/assets/platforms/nifilogo.svg"
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:superset",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "superset",
+      "displayName": "Superset",
+      "type": "OTHERS",
+      "logoUrl": "/assets/platforms/supersetlogo.png"
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:trino",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "trino",
+      "displayName": "Trino",
+      "type": "QUERY_ENGINE",
+      "logoUrl": "/assets/platforms/trinologo.png"
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:pulsar",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "pulsar",
+      "displayName": "Pulsar",
+      "type": "MESSAGE_BROKER",
+      "logoUrl": "/assets/platforms/pulsarlogo.png"
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:salesforce",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "salesforce",
+      "displayName": "Salesforce",
+      "type": "OTHERS",
+      "logoUrl": "/assets/platforms/logo-salesforce.svg"
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:unknown",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "Unknown Platform",
+      "displayName": "N/A",
+      "type": "OTHERS"
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:delta-lake",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "delta-lake",
+      "displayName": "Delta Lake",
+      "type": "OTHERS",
+      "logoUrl": "/assets/platforms/deltalakelogo.png"
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:databricks",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "databricks",
+      "displayName": "Databricks",
+      "type": "OTHERS",
+      "logoUrl": "/assets/platforms/databrickslogo.png"
+    }
+  },
+  {
+    "urn": "urn:li:dataPlatform:vertica",
+    "aspect": {
+      "datasetNameDelimiter": ".",
+      "name": "vertica",
+      "displayName": "Vertica",
+      "type": "OLAP_DATASTORE",
+      "logoUrl": "/assets/platforms/verticalogo.png"
     }
   }
 ]

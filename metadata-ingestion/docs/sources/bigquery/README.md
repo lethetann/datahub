@@ -1,0 +1,1 @@
+Ingesting metadata from Bigquery requires using the **bigquery** module.

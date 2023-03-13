@@ -1,15 +1,17 @@
+---
+title: "datahub-web-react"
+---
+
 # DataHub React App
 
 ## About
-This module contains a React version of the DataHub UI. This is now the production version of the DataHub client experience. 
-Notice that this is a completely separate frontend experience from the legacy Ember app and will remain so as it evolves. 
+This module contains a React application that serves as the DataHub UI.
 
 Feel free to take a look around, deploy, and contribute. 
 
-For details about the motivation please see [this RFC](../docs/rfc/active/2055-react-app/README.md). 
 
 ## Functional Goals
-The initial milestone for the app was to achieve functional parity with the existing Ember app. This meant supporting
+The initial milestone for the app was to achieve functional parity with the previous Ember app. This meant supporting
 
 - Dataset Profiles, Search, Browse Experience
 - User Profiles, Search
@@ -18,8 +20,8 @@ The initial milestone for the app was to achieve functional parity with the exis
 This has since been achieved. The new set of functional goals are reflected in the latest version of the [DataHub Roadmap](../docs/roadmap.md). 
 
 ## Design Goals
-In building out the client experience, we intend to leverage learnings from the Ember app and incorporate feedback gathered
-from organizations operating DataHub. Two themes have emerged to serve as guideposts: 
+In building out the client experience, we intend to leverage learnings from the previous Ember-based app and incorporate feedback gathered
+from organizations operating DataHub. Two themes have emerged to serve as guideposts:
 
 1. **Configurability**: The client experience should be configurable, such that deploying organizations can tailor certain 
    aspects to their needs. This includes theme / styling configurability, showing and hiding specific functionality, 
@@ -51,17 +53,26 @@ Optionally you could also start the app with the mock server without running the
 
 ### Functional testing
 
-Automated functional testing is powered by Cypress and MirageJS. When running the web server with Cypress the port is set to 3010 so that the usual web server running on port 3000 used for development can be started without interruptions.
+In order to start a server and run frontend unit tests using react-testing-framework, run:
 
-#### During development
+`yarn test :e2e`
 
-`yarn test:e2e`
+There are also more automated tests using Cypress in the `smoke-test` folder of the repository root.
 
-#### CI
+#### Troubleshooting
+`Error: error:0308010C:digital envelope routines::unsupported`: This error message shows up when using Node 17, due to an OpenSSL update related to md5.  
+The best workaround is to revert to the Active LTS version of Node, 16.13.0 with the command `nvm install 16.13.0` and if necessary reinstall yarn `npm install --global yarn`.
 
-`yarn test:e2e:ci`
 
 ### Theming
+
+#### Customizing your App without rebuilding assets
+
+To see the results of any change to a theme, you will need to rebuild your datahub-frontend-react container. While this may work for some users, if you don't want to rebuild your container
+you can change two things without rebuilding.
+
+1. You customize the logo on the homepage & the search bar header by setting the `REACT_APP_LOGO_URL` env variable when deploying GMS.
+2. You can customize the favicon (the icon on your browser tab) by setting the `REACT_APP_FAVICON_URL` env var when deploying GMS.
 
 #### Selecting a theme
 

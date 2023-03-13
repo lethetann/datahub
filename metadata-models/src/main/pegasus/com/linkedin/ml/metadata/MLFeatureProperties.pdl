@@ -15,6 +15,10 @@ record MLFeatureProperties {
   /**
    * Documentation of the MLFeature
    */
+  @Searchable = {
+    "fieldType": "TEXT",
+    "hasValuesFieldName": "hasDescription"
+  }
   description: optional string
 
   /**
@@ -33,7 +37,8 @@ record MLFeatureProperties {
   @Relationship = {
     "/*": {
       "name": "DerivedFrom",
-      "entityTypes": [ "dataset" ]
+      "entityTypes": [ "dataset" ],
+      "isLineage": true
     }
   }
   sources: optional array[Urn]

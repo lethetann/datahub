@@ -1,25 +1,23 @@
 # Defining environment
 ARG APP_ENV=prod
 
-FROM python:3.8 as base
-# ENV DOCKERIZE_VERSION v0.6.1
-# RUN apk --no-cache add curl tar \
-#     && curl https://repo1.maven.org/maven2/org/eclipse/jetty/jetty-runner/9.4.20.v20190813/jetty-runner-9.4.20.v20190813.jar --output jetty-runner.jar \
-#     && curl -L https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz | tar -C /usr/local/bin -xzv
-RUN apt-get update && apt-get install -y \
-        jq \
-        librdkafka-dev \
-        python3-ldap \
-        libldap2-dev \
-        libsasl2-dev \
-        libsasl2-modules \
-        ldap-utils \
-    && python -m pip install --upgrade pip wheel setuptools==57.5.0
+FROM acryldata/datahub-ingestion-base as base
 
-
-FROM openjdk:8 as prod-build
+FROM openjdk:11 as prod-build
 COPY . /datahub-src
-RUN cd /datahub-src && ./gradlew :metadata-events:mxe-schemas:build
+# We noticed that the gradle wrapper download failed frequently on in CI on arm64 machines.
+# I suspect this was due because of the QEMU emulation slowdown, combined with the arm64
+# build being starved for CPU by the x86_64 build's codegen step.
+#
+# The middle step will attempt to download gradle wrapper 5 times with exponential backoff.
+# The ./gradlew --version will force the download of the gradle wrapper but is otherwise a no-op.
+# Note that the retry logic will always return success, so we should always attempt to run codegen.
+# Inspired by https://github.com/gradle/gradle/issues/18124#issuecomment-958182335.
+# and https://unix.stackexchange.com/a/82610/378179.
+# This is a workaround for https://github.com/gradle/gradle/issues/18124.
+RUN cd /datahub-src && \
+    (for attempt in 1 2 3 4 5; do ./gradlew --version && break ; echo "Failed to download gradle wrapper (attempt $attempt)" && sleep $((2<<$attempt)) ; done ) && \
+    ./gradlew :metadata-events:mxe-schemas:build
 
 FROM base as prod-codegen
 COPY --from=prod-build /datahub-src /datahub-src
@@ -29,8 +27,15 @@ RUN cd /datahub-src/metadata-ingestion && \
 
 FROM base as prod-install
 COPY --from=prod-codegen /datahub-src/metadata-ingestion /datahub-ingestion
+COPY --from=prod-codegen /root/.cache/pip /root/.cache/pip
+ARG RELEASE_VERSION
 RUN cd /datahub-ingestion && \
-    pip install ".[all]"
+    sed -i.bak "s/__version__ = \"0.0.0.dev0\"/__version__ = \"$RELEASE_VERSION\"/" src/datahub/__init__.py && \
+    cat src/datahub/__init__.py && \
+    pip install ".[all]" && \
+    pip freeze && \
+    # This is required to fix security vulnerability in htrace-core4
+    rm -f /usr/local/lib/python3.10/site-packages/pyspark/jars/htrace-core4-4.1.0-incubating.jar
 
 FROM base as dev-install
 # Dummy stage for development. Assumes code is built on your machine and mounted to this image.

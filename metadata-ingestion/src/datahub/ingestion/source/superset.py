@@ -1,15 +1,24 @@
 import json
 from functools import lru_cache
-from typing import Iterable, Optional
+from typing import Dict, Iterable, Optional
 
 import dateutil.parser as dp
 import requests
+from pydantic.class_validators import root_validator, validator
+from pydantic.fields import Field
 
 from datahub.configuration.common import ConfigModel
 from datahub.emitter.mce_builder import DEFAULT_ENV
 from datahub.ingestion.api.common import PipelineContext
+from datahub.ingestion.api.decorators import (
+    SupportStatus,
+    config_class,
+    platform_name,
+    support_status,
+)
 from datahub.ingestion.api.source import Source, SourceReport
 from datahub.ingestion.api.workunit import MetadataWorkUnit
+from datahub.ingestion.source.sql import sql_common
 from datahub.metadata.com.linkedin.pegasus2avro.common import (
     AuditStamp,
     ChangeAuditStamps,
@@ -24,39 +33,9 @@ from datahub.metadata.schema_classes import (
     ChartTypeClass,
     DashboardInfoClass,
 )
+from datahub.utilities import config_clean
 
 PAGE_SIZE = 25
-
-
-def get_platform_from_sqlalchemy_uri(sqlalchemy_uri: str) -> str:
-    if sqlalchemy_uri.startswith("bigquery"):
-        return "bigquery"
-    if sqlalchemy_uri.startswith("druid"):
-        return "druid"
-    if sqlalchemy_uri.startswith("mssql"):
-        return "mssql"
-    if (
-        sqlalchemy_uri.startswith("jdbc:postgres:")
-        and sqlalchemy_uri.index("redshift.amazonaws") > 0
-    ):
-        return "redshift"
-    if sqlalchemy_uri.startswith("snowflake"):
-        return "snowflake"
-    if sqlalchemy_uri.startswith("presto"):
-        return "presto"
-    if sqlalchemy_uri.startswith("postgresql"):
-        return "postgres"
-    if sqlalchemy_uri.startswith("pinot"):
-        return "pinot"
-    if sqlalchemy_uri.startswith("oracle"):
-        return "oracle"
-    if sqlalchemy_uri.startswith("mysql"):
-        return "mysql"
-    if sqlalchemy_uri.startswith("mongodb"):
-        return "mongodb"
-    if sqlalchemy_uri.startswith("hive"):
-        return "hive"
-    return "external"
 
 
 chart_type_from_viz_type = {
@@ -79,12 +58,34 @@ chart_type_from_viz_type = {
 class SupersetConfig(ConfigModel):
     # See the Superset /security/login endpoint for details
     # https://superset.apache.org/docs/rest-api
-    connect_uri: str = "localhost:8088"
-    username: Optional[str] = None
-    password: Optional[str] = None
-    provider: str = "db"
-    options: dict = {}
-    env: str = DEFAULT_ENV
+    connect_uri: str = Field(default="localhost:8088", description="Superset host URL.")
+    display_uri: Optional[str] = Field(
+        default=None,
+        description="optional URL to use in links (if `connect_uri` is only for ingestion)",
+    )
+    username: Optional[str] = Field(default=None, description="Superset username.")
+    password: Optional[str] = Field(default=None, description="Superset password.")
+    provider: str = Field(default="db", description="Superset provider.")
+    options: Dict = Field(default={}, description="")
+    env: str = Field(
+        default=DEFAULT_ENV,
+        description="Environment to use in namespace when constructing URNs",
+    )
+    database_alias: Dict[str, str] = Field(
+        default={},
+        description="Can be used to change mapping for database names in superset to what you have in datahub",
+    )
+
+    @validator("connect_uri", "display_uri")
+    def remove_trailing_slash(cls, v):
+        return config_clean.remove_trailing_slashes(v)
+
+    @root_validator
+    def default_display_uri_to_connect_uri(cls, values):
+        base = values.get("display_uri")
+        if base is None:
+            values["display_uri"] = values.get("connect_uri")
+        return values
 
 
 def get_metric_name(metric):
@@ -93,8 +94,9 @@ def get_metric_name(metric):
     if isinstance(metric, str):
         return metric
     label = metric.get("label")
-    if label:
-        return label
+    if not label:
+        return ""
+    return label
 
 
 def get_filter_name(filter_obj):
@@ -109,7 +111,17 @@ def get_filter_name(filter_obj):
     return f"{clause} {column} {operator} {comparator}"
 
 
+@platform_name("Superset")
+@config_class(SupersetConfig)
+@support_status(SupportStatus.CERTIFIED)
 class SupersetSource(Source):
+    """
+    This plugin extracts the following:
+    - Charts, dashboards, and associated metadata
+
+    See documentation for superset's /security/login at https://superset.apache.org/docs/rest-api for more details on superset's login api.
+    """
+
     config: SupersetConfig
     report: SourceReport
     platform = "superset"
@@ -161,7 +173,7 @@ class SupersetSource(Source):
             f"{self.config.connect_uri}/api/v1/database/{database_id}"
         ).json()
         sqlalchemy_uri = database_response.get("result", {}).get("sqlalchemy_uri")
-        return get_platform_from_sqlalchemy_uri(sqlalchemy_uri)
+        return sql_common.get_platform_from_sqlalchemy_uri(sqlalchemy_uri)
 
     @lru_cache(maxsize=None)
     def get_datasource_urn_from_id(self, datasource_id):
@@ -174,6 +186,7 @@ class SupersetSource(Source):
         database_name = (
             dataset_response.get("result", {}).get("database", {}).get("database_name")
         )
+        database_name = self.config.database_alias.get(database_name, database_name)
 
         if database_id and table_name:
             platform = self.get_platform_from_database_id(database_id)
@@ -206,11 +219,13 @@ class SupersetSource(Source):
             created=AuditStamp(time=modified_ts, actor=modified_actor),
             lastModified=AuditStamp(time=modified_ts, actor=modified_actor),
         )
-        dashboard_url = f"{self.config.connect_uri[:-1]}{dashboard_data.get('url', '')}"
+        dashboard_url = f"{self.config.display_uri}{dashboard_data.get('url', '')}"
 
         chart_urns = []
         raw_position_data = dashboard_data.get("position_json", "{}")
-        position_data = json.loads(raw_position_data)
+        position_data = (
+            json.loads(raw_position_data) if raw_position_data is not None else {}
+        )
         for key, value in position_data.items():
             if not key.startswith("CHART-"):
                 continue
@@ -276,7 +291,7 @@ class SupersetSource(Source):
             lastModified=AuditStamp(time=modified_ts, actor=modified_actor),
         )
         chart_type = chart_type_from_viz_type.get(chart_data.get("viz_type", ""))
-        chart_url = f"{self.config.connect_uri[:-1]}{chart_data.get('url', '')}"
+        chart_url = f"{self.config.display_uri}{chart_data.get('url', '')}"
 
         datasource_id = chart_data.get("datasource_id")
         datasource_urn = self.get_datasource_urn_from_id(datasource_id)
@@ -293,6 +308,24 @@ class SupersetSource(Source):
         group_bys = params.get("groupby", []) or []
         if isinstance(group_bys, str):
             group_bys = [group_bys]
+        # handling List[Union[str, dict]] case
+        # a dict containing two keys: sqlExpression and label
+        elif isinstance(group_bys, list) and len(group_bys) != 0:
+            temp_group_bys = []
+            for item in group_bys:
+                # if the item is a custom label
+                if isinstance(item, dict):
+                    item_value = item.get("label", "")
+                    if item_value != "":
+                        temp_group_bys.append(f"{item_value}_custom_label")
+                    else:
+                        temp_group_bys.append(str(item))
+
+                # if the item is a string
+                elif isinstance(item, str):
+                    temp_group_bys.append(item)
+
+            group_bys = temp_group_bys
 
         custom_properties = {
             "Metrics": ", ".join(metrics),

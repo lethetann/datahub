@@ -27,6 +27,30 @@
       } ]
     } ],
     "actions" : [ {
+      "name" : "applyRetention",
+      "parameters" : [ {
+        "name" : "start",
+        "type" : "int",
+        "optional" : true
+      }, {
+        "name" : "count",
+        "type" : "int",
+        "optional" : true
+      }, {
+        "name" : "attemptWithVersion",
+        "type" : "int",
+        "optional" : true
+      }, {
+        "name" : "aspectName",
+        "type" : "string",
+        "optional" : true
+      }, {
+        "name" : "urn",
+        "type" : "string",
+        "optional" : true
+      } ],
+      "returns" : "string"
+    }, {
       "name" : "autocomplete",
       "parameters" : [ {
         "name" : "entity",
@@ -40,7 +64,7 @@
         "optional" : true
       }, {
         "name" : "filter",
-        "type" : "com.linkedin.metadata.query.Filter",
+        "type" : "com.linkedin.metadata.query.filter.Filter",
         "optional" : true
       }, {
         "name" : "limit",
@@ -74,7 +98,7 @@
         "type" : "string"
       }, {
         "name" : "filter",
-        "type" : "com.linkedin.metadata.query.Filter",
+        "type" : "com.linkedin.metadata.query.filter.Filter",
         "optional" : true
       }, {
         "name" : "start",
@@ -86,11 +110,78 @@
       "returns" : "com.linkedin.metadata.browse.BrowseResult"
     }, {
       "name" : "delete",
+      "doc" : "Deletes all data related to an individual urn(entity).\nService Returns: - a DeleteEntityResponse object.",
+      "parameters" : [ {
+        "name" : "urn",
+        "type" : "string",
+        "doc" : "- the urn of the entity."
+      }, {
+        "name" : "aspectName",
+        "type" : "string",
+        "optional" : true,
+        "doc" : "- the optional aspect name if only want to delete the aspect (applicable only for timeseries aspects)."
+      }, {
+        "name" : "startTimeMillis",
+        "type" : "long",
+        "optional" : true,
+        "doc" : "- the optional start time (applicable only for timeseries aspects)."
+      }, {
+        "name" : "endTimeMillis",
+        "type" : "long",
+        "optional" : true,
+        "doc" : "- the optional end time (applicable only for the timeseries aspects)."
+      } ],
+      "returns" : "com.linkedin.metadata.run.DeleteEntityResponse"
+    }, {
+      "name" : "deleteAll",
+      "parameters" : [ {
+        "name" : "registryId",
+        "type" : "string",
+        "optional" : true
+      }, {
+        "name" : "dryRun",
+        "type" : "boolean",
+        "optional" : true
+      } ],
+      "returns" : "com.linkedin.metadata.run.RollbackResponse"
+    }, {
+      "name" : "deleteReferences",
+      "parameters" : [ {
+        "name" : "urn",
+        "type" : "string"
+      }, {
+        "name" : "dryRun",
+        "type" : "boolean",
+        "optional" : true
+      } ],
+      "returns" : "com.linkedin.metadata.run.DeleteReferencesResponse"
+    }, {
+      "name" : "exists",
       "parameters" : [ {
         "name" : "urn",
         "type" : "string"
       } ],
-      "returns" : "com.linkedin.metadata.run.DeleteEntityResponse"
+      "returns" : "boolean"
+    }, {
+      "name" : "filter",
+      "parameters" : [ {
+        "name" : "entity",
+        "type" : "string"
+      }, {
+        "name" : "filter",
+        "type" : "com.linkedin.metadata.query.filter.Filter"
+      }, {
+        "name" : "sort",
+        "type" : "com.linkedin.metadata.query.filter.SortCriterion",
+        "optional" : true
+      }, {
+        "name" : "start",
+        "type" : "int"
+      }, {
+        "name" : "count",
+        "type" : "int"
+      } ],
+      "returns" : "com.linkedin.metadata.search.SearchResult"
     }, {
       "name" : "getBrowsePaths",
       "parameters" : [ {
@@ -122,11 +213,11 @@
         "type" : "string"
       }, {
         "name" : "filter",
-        "type" : "com.linkedin.metadata.query.Filter",
+        "type" : "com.linkedin.metadata.query.filter.Filter",
         "optional" : true
       }, {
         "name" : "sort",
-        "type" : "com.linkedin.metadata.query.SortCriterion",
+        "type" : "com.linkedin.metadata.query.filter.SortCriterion",
         "optional" : true
       }, {
         "name" : "start",
@@ -150,6 +241,89 @@
       } ],
       "returns" : "com.linkedin.metadata.query.ListUrnsResult"
     }, {
+      "name" : "scrollAcrossEntities",
+      "parameters" : [ {
+        "name" : "entities",
+        "type" : "{ \"type\" : \"array\", \"items\" : \"string\" }",
+        "optional" : true
+      }, {
+        "name" : "input",
+        "type" : "string"
+      }, {
+        "name" : "filter",
+        "type" : "com.linkedin.metadata.query.filter.Filter",
+        "optional" : true
+      }, {
+        "name" : "sort",
+        "type" : "com.linkedin.metadata.query.filter.SortCriterion",
+        "optional" : true
+      }, {
+        "name" : "scrollId",
+        "type" : "string"
+      }, {
+        "name" : "keepAlive",
+        "type" : "string"
+      }, {
+        "name" : "count",
+        "type" : "int"
+      }, {
+        "name" : "searchFlags",
+        "type" : "com.linkedin.metadata.query.SearchFlags",
+        "optional" : true
+      } ],
+      "returns" : "com.linkedin.metadata.search.ScrollResult"
+    }, {
+      "name" : "scrollAcrossLineage",
+      "parameters" : [ {
+        "name" : "urn",
+        "type" : "string"
+      }, {
+        "name" : "direction",
+        "type" : "string"
+      }, {
+        "name" : "entities",
+        "type" : "{ \"type\" : \"array\", \"items\" : \"string\" }",
+        "optional" : true
+      }, {
+        "name" : "input",
+        "type" : "string",
+        "optional" : true
+      }, {
+        "name" : "maxHops",
+        "type" : "int",
+        "optional" : true
+      }, {
+        "name" : "filter",
+        "type" : "com.linkedin.metadata.query.filter.Filter",
+        "optional" : true
+      }, {
+        "name" : "sort",
+        "type" : "com.linkedin.metadata.query.filter.SortCriterion",
+        "optional" : true
+      }, {
+        "name" : "scrollId",
+        "type" : "string"
+      }, {
+        "name" : "keepAlive",
+        "type" : "string"
+      }, {
+        "name" : "count",
+        "type" : "int"
+      }, {
+        "name" : "startTimeMillis",
+        "type" : "long",
+        "optional" : true
+      }, {
+        "name" : "endTimeMillis",
+        "type" : "long",
+        "optional" : true
+      }, {
+        "name" : "searchFlags",
+        "type" : "com.linkedin.metadata.query.SearchFlags",
+        "optional" : true
+      } ],
+      "returns" : "com.linkedin.metadata.search.LineageScrollResult"
+    }, {
       "name" : "search",
       "parameters" : [ {
         "name" : "entity",
@@ -159,11 +333,11 @@
         "type" : "string"
       }, {
         "name" : "filter",
-        "type" : "com.linkedin.metadata.query.Filter",
+        "type" : "com.linkedin.metadata.query.filter.Filter",
         "optional" : true
       }, {
         "name" : "sort",
-        "type" : "com.linkedin.metadata.query.SortCriterion",
+        "type" : "com.linkedin.metadata.query.filter.SortCriterion",
         "optional" : true
       }, {
         "name" : "start",
@@ -171,6 +345,17 @@
       }, {
         "name" : "count",
         "type" : "int"
+      }, {
+        "annotations" : {
+          "deprecated" : { }
+        },
+        "name" : "fulltext",
+        "type" : "boolean",
+        "optional" : true
+      }, {
+        "name" : "searchFlags",
+        "type" : "com.linkedin.metadata.query.SearchFlags",
+        "optional" : true
       } ],
       "returns" : "com.linkedin.metadata.search.SearchResult"
     }, {
@@ -184,11 +369,11 @@
         "type" : "string"
       }, {
         "name" : "filter",
-        "type" : "com.linkedin.metadata.query.Filter",
+        "type" : "com.linkedin.metadata.query.filter.Filter",
         "optional" : true
       }, {
         "name" : "sort",
-        "type" : "com.linkedin.metadata.query.SortCriterion",
+        "type" : "com.linkedin.metadata.query.filter.SortCriterion",
         "optional" : true
       }, {
         "name" : "start",
@@ -196,8 +381,60 @@
       }, {
         "name" : "count",
         "type" : "int"
+      }, {
+        "name" : "searchFlags",
+        "type" : "com.linkedin.metadata.query.SearchFlags",
+        "optional" : true
       } ],
       "returns" : "com.linkedin.metadata.search.SearchResult"
+    }, {
+      "name" : "searchAcrossLineage",
+      "parameters" : [ {
+        "name" : "urn",
+        "type" : "string"
+      }, {
+        "name" : "direction",
+        "type" : "string"
+      }, {
+        "name" : "entities",
+        "type" : "{ \"type\" : \"array\", \"items\" : \"string\" }",
+        "optional" : true
+      }, {
+        "name" : "input",
+        "type" : "string",
+        "optional" : true
+      }, {
+        "name" : "maxHops",
+        "type" : "int",
+        "optional" : true
+      }, {
+        "name" : "filter",
+        "type" : "com.linkedin.metadata.query.filter.Filter",
+        "optional" : true
+      }, {
+        "name" : "sort",
+        "type" : "com.linkedin.metadata.query.filter.SortCriterion",
+        "optional" : true
+      }, {
+        "name" : "start",
+        "type" : "int"
+      }, {
+        "name" : "count",
+        "type" : "int"
+      }, {
+        "name" : "startTimeMillis",
+        "type" : "long",
+        "optional" : true
+      }, {
+        "name" : "endTimeMillis",
+        "type" : "long",
+        "optional" : true
+      }, {
+        "name" : "searchFlags",
+        "type" : "com.linkedin.metadata.query.SearchFlags",
+        "optional" : true
+      } ],
+      "returns" : "com.linkedin.metadata.search.LineageSearchResult"
     }, {
       "name" : "setWritable",
       "parameters" : [ {

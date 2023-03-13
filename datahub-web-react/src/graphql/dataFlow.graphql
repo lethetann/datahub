@@ -1,10 +1,15 @@
 fragment dataFlowFields on DataFlow {
     urn
     type
+    exists
+    lastIngested
     orchestrator
     flowId
     cluster
-    info {
+    platform {
+        ...platformFields
+    }
+    properties {
         name
         description
         project
@@ -24,27 +29,34 @@ fragment dataFlowFields on DataFlow {
         ...globalTagsFields
     }
     institutionalMemory {
-        elements {
-            url
-            author {
-                urn
-                username
-            }
-            label
-            created {
-                time
-                actor
-            }
-        }
+        ...institutionalMemoryFields
     }
     glossaryTerms {
         ...glossaryTerms
+    }
+    domain {
+        ...entityDomain
+    }
+    status {
+        removed
+    }
+    deprecation {
+        ...deprecationFields
+    }
+    dataPlatformInstance {
+        ...dataPlatformInstanceFields
     }
 }
 
 query getDataFlow($urn: String!) {
     dataFlow(urn: $urn) {
         ...dataFlowFields
+        upstream: lineage(input: { direction: UPSTREAM, start: 0, count: 100 }) {
+            ...partialLineageResults
+        }
+        downstream: lineage(input: { direction: DOWNSTREAM, start: 0, count: 100 }) {
+            ...partialLineageResults
+        }
         childJobs: relationships(input: { types: ["IsPartOf"], direction: INCOMING, start: 0, count: 100 }) {
             start
             count
@@ -59,11 +71,14 @@ query getDataFlow($urn: String!) {
                             urn
                             type
                             orchestrator
+                            platform {
+                                ...platformFields
+                            }
                         }
                         ownership {
                             ...ownershipFields
                         }
-                        info {
+                        properties {
                             name
                             description
                         }
@@ -76,6 +91,9 @@ query getDataFlow($urn: String!) {
                         glossaryTerms {
                             ...glossaryTerms
                         }
+                        deprecation {
+                            ...deprecationFields
+                        }
                     }
                 }
             }
@@ -85,6 +103,6 @@ query getDataFlow($urn: String!) {
 
 mutation updateDataFlow($urn: String!, $input: DataFlowUpdateInput!) {
     updateDataFlow(urn: $urn, input: $input) {
-        ...dataFlowFields
+        urn
     }
 }

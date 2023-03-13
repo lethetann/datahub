@@ -1,3 +1,6 @@
+plugins {
+  id 'java'
+}
 apply plugin: 'distribution'
 apply plugin: 'com.github.node-gradle.node'
 
@@ -5,16 +8,25 @@ node {
 
   // If true, it will download node using above parameters.
   // If false, it will try to use globally installed node.
-  download = true
+
+  if (project.hasProperty('useSystemNode')) {
+    download = ! project.getProperty('useSystemNode').toBoolean()
+  } else {
+    download = true
+  }
 
   // Version of node to use.
-  version = '14.15.3'
+  version = '16.8.0'
 
   // Version of Yarn to use.
   yarnVersion = '1.22.0'
 
-  // Base URL for fetching node distributions (change if you have a mirror).
-  distBaseUrl = 'https://nodejs.org/dist'
+  // Base URL for fetching node distributions (set nodeDistBaseUrl if you have a mirror).
+  if (project.hasProperty('nodeDistBaseUrl')) {
+    distBaseUrl = project.getProperty('nodeDistBaseUrl')
+  } else {
+    distBaseUrl = 'https://nodejs.org/dist'
+  }
 
   // Set the work directory for unpacking node
   workDir = file("${project.projectDir}/.gradle/nodejs")
@@ -50,30 +62,54 @@ task yarnLint(type: YarnTask, dependsOn: [yarnInstall, yarnGenerate]) {
   args = ['run', 'lint']
 }
 
+test.dependsOn([yarnInstall, yarnTest, yarnLint])
+
+task yarnLintFix(type: YarnTask, dependsOn: [yarnInstall, yarnGenerate]) {
+  args = ['run', 'lint-fix']
+}
+
 task yarnBuild(type: YarnTask, dependsOn: [yarnInstall, yarnTest, yarnLint]) {
   args = ['run', 'build']
 }
 
-clean {
-  delete 'node_modules'
+task yarnQuickBuild(type: YarnTask, dependsOn: [yarnInstall, yarnGenerate]) {
+  args = ['run', 'build']
+}
+
+task cleanExtraDirs {
+  delete 'node_modules/.yarn-integrity'
   delete 'dist'
   delete 'tmp'
-  delete 'build'
   delete 'just'
+  delete 'src/types.generated.ts'
+  delete fileTree('../datahub-frontend/public')
+  delete fileTree(dir: 'src/graphql', include: '*.generated.ts')
 }
+clean.finalizedBy(cleanExtraDirs)
 
 configurations {
   assets
 }
 
 distZip {
-  dependsOn yarnBuild
+  dependsOn yarnQuickBuild
   baseName 'datahub-web-react'
   from 'dist'
 }
 
-if (!gradle.startParameter.taskNames.any { it in ["idea"] }) {
-  artifacts {
-    assets distZip
+task copyAssets(dependsOn: distZip) {
+  doLast {
+    copy {
+      from zipTree(distZip.outputs.files.first())
+      into "../datahub-frontend/public"
+    }
   }
+}
+
+jar {
+  dependsOn distZip, copyAssets
+  into('public') {
+    from zipTree(distZip.outputs.files.first())
+  }
+  classifier = 'assets'
 }

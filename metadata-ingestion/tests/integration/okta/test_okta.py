@@ -3,6 +3,7 @@ import pathlib
 from unittest.mock import Mock, patch
 
 import jsonpickle
+import pytest
 from freezegun import freeze_time
 from okta.models import Group, User
 
@@ -11,6 +12,7 @@ from datahub.ingestion.source.identity.okta import OktaConfig
 from tests.test_helpers import mce_helpers
 
 FROZEN_TIME = "2020-04-14 07:00:00"
+USER_ID_NOT_IN_GROUPS = "5"
 
 
 def test_okta_config():
@@ -38,11 +40,9 @@ def test_okta_config():
 
 @freeze_time(FROZEN_TIME)
 def test_okta_source_default_configs(pytestconfig, tmp_path):
-
     test_resources_dir: pathlib.Path = pytestconfig.rootpath / "tests/integration/okta"
 
     with patch("datahub.ingestion.source.identity.okta.OktaClient") as MockClient:
-
         _init_mock_okta_client(test_resources_dir, MockClient)
 
         # Run an Okta usage ingestion run.
@@ -87,11 +87,9 @@ def test_okta_source_default_configs(pytestconfig, tmp_path):
 
 @freeze_time(FROZEN_TIME)
 def test_okta_source_ingestion_disabled(pytestconfig, tmp_path):
-
     test_resources_dir: pathlib.Path = pytestconfig.rootpath / "tests/integration/okta"
 
     with patch("datahub.ingestion.source.identity.okta.OktaClient") as MockClient:
-
         _init_mock_okta_client(test_resources_dir, MockClient)
 
         # Run an Okta usage ingestion run.
@@ -135,12 +133,11 @@ def test_okta_source_ingestion_disabled(pytestconfig, tmp_path):
 
 
 @freeze_time(FROZEN_TIME)
+@pytest.mark.asyncio
 def test_okta_source_include_deprovisioned_suspended_users(pytestconfig, tmp_path):
-
     test_resources_dir: pathlib.Path = pytestconfig.rootpath / "tests/integration/okta"
 
     with patch("datahub.ingestion.source.identity.okta.OktaClient") as MockClient:
-
         _init_mock_okta_client(test_resources_dir, MockClient)
 
         # Run an Okta usage ingestion run.
@@ -185,12 +182,11 @@ def test_okta_source_include_deprovisioned_suspended_users(pytestconfig, tmp_pat
 
 
 @freeze_time(FROZEN_TIME)
+@pytest.mark.asyncio
 def test_okta_source_custom_user_name_regex(pytestconfig, tmp_path):
-
     test_resources_dir: pathlib.Path = pytestconfig.rootpath / "tests/integration/okta"
 
     with patch("datahub.ingestion.source.identity.okta.OktaClient") as MockClient:
-
         _init_mock_okta_client(test_resources_dir, MockClient)
 
         # Run an Okta usage ingestion run.
@@ -235,7 +231,6 @@ def test_okta_source_custom_user_name_regex(pytestconfig, tmp_path):
 
 # Initializes a Mock Okta Client to return users from okta_users.json and groups from okta_groups.json.
 def _init_mock_okta_client(test_resources_dir, MockClient):
-
     okta_users_json_file = test_resources_dir / "okta_users.json"
     okta_groups_json_file = test_resources_dir / "okta_groups.json"
 
@@ -249,8 +244,6 @@ def _init_mock_okta_client(test_resources_dir, MockClient):
         reference_groups = jsonpickle.decode(okta_groups_json.read())
         # Create groups from JSON dicts
         groups = list(map(lambda groupJson: Group(groupJson), reference_groups))
-
-    # For simplicity, each user is placed in ALL groups.
 
     # Mock Client List response.
     users_resp_mock = Mock()
@@ -287,8 +280,7 @@ def _init_mock_okta_client(test_resources_dir, MockClient):
 
     # Create a separate response mock for each group in our sample data.
     list_group_users_result_values = []
-    for group in groups:
-
+    for _ in groups:
         # Mock Get Group Membership
         group_users_resp_mock = Mock()
         group_users_resp_mock.has_next.side_effect = [True, False]
@@ -300,7 +292,11 @@ def _init_mock_okta_client(test_resources_dir, MockClient):
         group_users_resp_mock.next.return_value = group_users_next_future
         # users, resp, err
         list_group_users_future = asyncio.Future()  # type: asyncio.Future
-        list_group_users_future.set_result((users[0:-1], group_users_resp_mock, None))
+        # Exclude last user from being in any groups
+        filtered_users = [user for user in users if user.id != USER_ID_NOT_IN_GROUPS]
+        list_group_users_future.set_result(
+            (filtered_users, group_users_resp_mock, None)
+        )
         list_group_users_result_values.append(list_group_users_future)
 
     MockClient().list_group_users.side_effect = list_group_users_result_values

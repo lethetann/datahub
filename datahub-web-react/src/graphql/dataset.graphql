@@ -1,21 +1,10 @@
-mutation updateDataset($urn: String!, $input: DatasetUpdateInput!) {
-    updateDataset(urn: $urn, input: $input) {
-        ...nonRecursiveDatasetFields
-        downstreamLineage {
-            ...downstreamRelationshipFields
-        }
-        upstreamLineage {
-            ...upstreamRelationshipFields
-        }
-    }
-}
-
 query getDataProfiles($urn: String!, $limit: Int, $startTime: Long, $endTime: Long) {
     dataset(urn: $urn) {
         urn
         datasetProfiles(limit: $limit, startTimeMillis: $startTime, endTimeMillis: $endTime) {
             rowCount
             columnCount
+            sizeInBytes
             timestampMillis
             fieldProfiles {
                 fieldPath
@@ -36,64 +25,202 @@ query getDataProfiles($urn: String!, $limit: Int, $startTime: Long, $endTime: Lo
 
 query getDataset($urn: String!) {
     dataset(urn: $urn) {
-        ...nonRecursiveDatasetFields
-        downstreamLineage {
-            ...downstreamRelationshipFields
-        }
-        upstreamLineage {
-            ...upstreamRelationshipFields
-        }
-        schemaMetadata(version: 0) {
-            ...schemaMetadataFields
-        }
-        previousSchemaMetadata: schemaMetadata(version: -1) {
-            ...schemaMetadataFields
-        }
-        editableSchemaMetadata {
-            editableSchemaFieldInfo {
-                fieldPath
-                description
-                globalTags {
-                    ...globalTagsFields
-                }
-                glossaryTerms {
-                    ...glossaryTerms
-                }
+        exists
+        ...nonSiblingDatasetFields
+        siblings {
+            isPrimary
+            siblings {
+                urn
+                type
+                ...nonSiblingDatasetFields
             }
         }
-        deprecation {
-            actor
-            deprecated
-            note
-            decommissionTime
+    }
+}
+
+fragment nonSiblingDatasetFields on Dataset {
+    ...nonRecursiveDatasetFields
+    schemaMetadata(version: 0) {
+        ...schemaMetadataFields
+    }
+    editableSchemaMetadata {
+        editableSchemaFieldInfo {
+            fieldPath
+            description
+            globalTags {
+                ...globalTagsFields
+            }
+            glossaryTerms {
+                ...glossaryTerms
+            }
         }
-        globalTags {
-            ...globalTagsFields
+    }
+    deprecation {
+        actor
+        deprecated
+        note
+        decommissionTime
+    }
+    globalTags {
+        ...globalTagsFields
+    }
+    glossaryTerms {
+        ...glossaryTerms
+    }
+    subTypes {
+        typeNames
+    }
+    domain {
+        ...entityDomain
+    }
+    parentContainers {
+        ...parentContainersFields
+    }
+    usageStats(range: WEEK) {
+        buckets {
+            metrics {
+                totalSqlQueries
+            }
         }
-        glossaryTerms {
-            ...glossaryTerms
+    }
+    datasetProfiles(limit: 1) {
+        rowCount
+        columnCount
+        sizeInBytes
+        timestampMillis
+        fieldProfiles {
+            fieldPath
+            uniqueCount
+            uniqueProportion
+            nullCount
+            nullProportion
+            min
+            max
+            mean
+            median
+            stdev
+            sampleValues
         }
-        subTypes {
-            typeNames
+    }
+    health {
+        type
+        status
+        message
+        causes
+    }
+    assertions(start: 0, count: 1) {
+        total
+    }
+    operations(limit: 1) {
+        timestampMillis
+        lastUpdatedTimestamp
+    }
+    upstream: lineage(input: { direction: UPSTREAM, start: 0, count: 100 }) {
+        ...partialLineageResults
+    }
+    downstream: lineage(input: { direction: DOWNSTREAM, start: 0, count: 100 }) {
+        ...partialLineageResults
+    }
+    ...viewProperties
+    autoRenderAspects: aspects(input: { autoRenderOnly: true }) {
+        aspectName
+        payload
+        renderSpec {
+            displayType
+            displayName
+            key
         }
-        usageStats(resource: $urn, range: MONTH) {
+    }
+    status {
+        removed
+    }
+    readRuns: runs(start: 0, count: 20, direction: INCOMING) {
+        count
+        start
+        total
+    }
+    writeRuns: runs(start: 0, count: 20, direction: OUTGOING) {
+        count
+        start
+        total
+    }
+    testResults {
+        passing {
+            test {
+                ...testFields
+            }
+            type
+        }
+        failing {
+            test {
+                ...testFields
+            }
+            type
+        }
+    }
+    statsSummary {
+        queryCountLast30Days
+        uniqueUserCountLast30Days
+        topUsersLast30Days {
+            urn
+            type
+            username
+            properties {
+                displayName
+                firstName
+                lastName
+                fullName
+            }
+            editableProperties {
+                displayName
+                pictureLink
+            }
+        }
+    }
+    siblings {
+        isPrimary
+    }
+    privileges {
+        canEditLineage
+        canEditEmbed
+        canEditQueries
+    }
+}
+
+query getRecentQueries($urn: String!) {
+    dataset(urn: $urn) {
+        usageStats(range: MONTH) {
             buckets {
                 bucket
-                duration
-                resource
                 metrics {
-                    uniqueUserCount
-                    totalSqlQueries
                     topSqlQueries
                 }
             }
+        }
+    }
+}
+
+query getLastMonthUsageAggregations($urn: String!) {
+    dataset(urn: $urn) {
+        usageStats(range: MONTH) {
             aggregations {
                 uniqueUserCount
                 totalSqlQueries
                 users {
                     user {
                         urn
+                        type
                         username
+                        properties {
+                            displayName
+                            firstName
+                            lastName
+                            fullName
+                        }
+                        editableProperties {
+                            displayName
+                            pictureLink
+                        }
                     }
                     count
                     userEmail
@@ -104,49 +231,60 @@ query getDataset($urn: String!) {
                 }
             }
         }
-        datasetProfiles(limit: 1) {
-            rowCount
-            columnCount
-            timestampMillis
-            fieldProfiles {
-                fieldPath
-                uniqueCount
-                uniqueProportion
-                nullCount
-                nullProportion
-                min
-                max
-                mean
-                median
-                stdev
-                sampleValues
+    }
+}
+
+mutation updateDataset($urn: String!, $input: DatasetUpdateInput!) {
+    updateDataset(urn: $urn, input: $input) {
+        urn
+    }
+}
+
+fragment viewProperties on Dataset {
+    viewProperties {
+        materialized
+        logic
+        language
+    }
+}
+
+fragment assertionsQuery on Dataset {
+    assertions(start: 0, count: 1000) {
+        start
+        count
+        total
+        assertions {
+            ...assertionDetails
+            runEvents(status: COMPLETE, limit: 1) {
+                total
+                failed
+                succeeded
+                runEvents {
+                    ...assertionRunEventDetails
+                }
             }
         }
     }
 }
 
-query getDatasetSchemaVersions($urn: String!, $version1: Long, $version2: Long) {
+query getDatasetAssertions($urn: String!) {
     dataset(urn: $urn) {
-        urn
-        name
-        type
-        origin
-        description
-        uri
-        schemaMetadata(version: $version1) {
-            ...schemaMetadataFields
-        }
-        previousSchemaMetadata: schemaMetadata(version: $version2) {
-            ...schemaMetadataFields
-        }
-        editableSchemaMetadata {
-            editableSchemaFieldInfo {
-                fieldPath
-                description
-                globalTags {
-                    ...globalTagsFields
-                }
+        ...assertionsQuery
+        siblings {
+            isPrimary
+            siblings {
+                urn
+                type
+                ...assertionsQuery
             }
+        }
+    }
+}
+
+query getDatasetRuns($urn: String!, $start: Int!, $count: Int!, $direction: RelationshipDirection!) {
+    dataset(urn: $urn) {
+        runs(start: $start, count: $count, direction: $direction) {
+            ...runResults
         }
     }
 }

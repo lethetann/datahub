@@ -1,43 +1,42 @@
 import React from 'react';
 import { Switch, Route } from 'react-router-dom';
 import { Layout } from 'antd';
-import { BrowseResultsPage } from './browse/BrowseResultsPage';
-import { EntityPage } from './entity/EntityPage';
-import { PageRoutes } from '../conf/Global';
-import { useEntityRegistry } from './useEntityRegistry';
 import { HomePage } from './home/HomePage';
-import { SearchPage } from './search/SearchPage';
-import { AnalyticsPage } from './analyticsDashboard/components/AnalyticsPage';
-import { PoliciesPage } from './policy/PoliciesPage';
 import AppConfigProvider from '../AppConfigProvider';
-import { ManageIdentitiesPage } from './identity/ManageIdentitiesPage';
+import { SearchRoutes } from './SearchRoutes';
+import { EducationStepsProvider } from '../providers/EducationStepsProvider';
+import UserContextProvider from './context/UserContextProvider';
+import { PageRoutes } from '../conf/Global';
+import EmbeddedPage from './embed/EmbeddedPage';
+import { useEntityRegistry } from './useEntityRegistry';
 
 /**
  * Container for all views behind an authentication wall.
  */
 export const ProtectedRoutes = (): JSX.Element => {
     const entityRegistry = useEntityRegistry();
+
     return (
         <AppConfigProvider>
-            <Layout style={{ height: '100%', width: '100%' }}>
-                <Layout>
-                    <Switch>
-                        <Route exact path="/" render={() => <HomePage />} />
-                        {entityRegistry.getEntities().map((entity) => (
-                            <Route
-                                key={entity.getPathName()}
-                                path={`/${entity.getPathName()}/:urn`}
-                                render={() => <EntityPage entityType={entity.type} />}
-                            />
-                        ))}
-                        <Route path={PageRoutes.SEARCH_RESULTS} render={() => <SearchPage />} />
-                        <Route path={PageRoutes.BROWSE_RESULTS} render={() => <BrowseResultsPage />} />
-                        <Route path={PageRoutes.ANALYTICS} render={() => <AnalyticsPage />} />
-                        <Route path={PageRoutes.POLICIES} render={() => <PoliciesPage />} />
-                        <Route path={PageRoutes.IDENTITIES} render={() => <ManageIdentitiesPage />} />
-                    </Switch>
-                </Layout>
-            </Layout>
+            <UserContextProvider>
+                <EducationStepsProvider>
+                    <Layout style={{ height: '100%', width: '100%' }}>
+                        <Layout>
+                            <Switch>
+                                <Route exact path="/" render={() => <HomePage />} />
+                                {entityRegistry.getEntities().map((entity) => (
+                                    <Route
+                                        key={`${entity.getPathName()}/${PageRoutes.EMBED}`}
+                                        path={`${PageRoutes.EMBED}/${entity.getPathName()}/:urn`}
+                                        render={() => <EmbeddedPage entityType={entity.type} />}
+                                    />
+                                ))}
+                                <Route path="/*" render={() => <SearchRoutes />} />
+                            </Switch>
+                        </Layout>
+                    </Layout>
+                </EducationStepsProvider>
+            </UserContextProvider>
         </AppConfigProvider>
     );
 };

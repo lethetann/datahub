@@ -24,6 +24,8 @@ public class DefaultEntitySpec implements EntitySpec {
   private final RecordDataSchema _snapshotSchema;
   private final TyperefDataSchema _aspectTyperefSchema;
 
+  private List<SearchableFieldSpec> _searchableFieldSpecs;
+
   public DefaultEntitySpec(
       @Nonnull final Collection<AspectSpec> aspectSpecs,
       @Nonnull final EntityAnnotation entityAnnotation,
@@ -50,7 +52,6 @@ public class DefaultEntitySpec implements EntitySpec {
   @Override
   public EntityAnnotation getEntityAnnotation() {
     return _entityAnnotation;
-
   }
 
   @Override
@@ -95,10 +96,11 @@ public class DefaultEntitySpec implements EntitySpec {
 
   @Override
   public List<SearchableFieldSpec> getSearchableFieldSpecs() {
-    return _aspectSpecs.values()
-        .stream()
-        .map(AspectSpec::getSearchableFieldSpecs)
-        .flatMap(List::stream)
-        .collect(Collectors.toList());
+    if (_searchableFieldSpecs == null) {
+      _searchableFieldSpecs = EntitySpec.super.getSearchableFieldSpecs();
+    }
+
+    return _searchableFieldSpecs;
   }
+
 }

@@ -1,6 +1,5 @@
 [
 {
-    "auditHeader": null,
     "proposedSnapshot": {
         "com.linkedin.pegasus2avro.metadata.snapshot.DashboardSnapshot": {
             "urn": "urn:li:dashboard:(looker,dashboards.1)",
@@ -8,26 +7,21 @@
                 {
                     "com.linkedin.pegasus2avro.dashboard.DashboardInfo": {
                         "customProperties": {},
-                        "externalUrl": null,
                         "title": "foo",
                         "description": "lorem ipsum",
                         "charts": [],
+                        "datasets": [],
                         "lastModified": {
                             "created": {
-                                "time": 0,
-                                "actor": "urn:li:corpuser:unknown",
-                                "impersonator": null
+                                "time": 1586847600000,
+                                "actor": "urn:li:corpuser:unknown"
                             },
                             "lastModified": {
-                                "time": 0,
-                                "actor": "urn:li:corpuser:unknown",
-                                "impersonator": null
-                            },
-                            "deleted": null
+                                "time": 1586847600000,
+                                "actor": "urn:li:corpuser:unknown"
+                            }
                         },
-                        "dashboardUrl": "https://looker.company.com/dashboards/1",
-                        "access": null,
-                        "lastRefreshed": null
+                        "dashboardUrl": "https://looker.company.com/dashboards/1"
                     }
                 },
                 {
@@ -38,15 +32,54 @@
             ]
         }
     },
-    "proposedDelta": null,
     "systemMetadata": {
         "lastObserved": 1586847600000,
-        "runId": "looker-test",
-        "properties": null
+        "runId": "looker-test"
     }
 },
 {
-    "auditHeader": null,
+    "entityType": "dashboard",
+    "entityUrn": "urn:li:dashboard:(looker,dashboards.1)",
+    "changeType": "UPSERT",
+    "aspectName": "embed",
+    "aspect": {
+        "value": "{\"renderUrl\": \"https://looker.company.com/embed/dashboards/1\"}",
+        "contentType": "application/json"
+    },
+    "systemMetadata": {
+        "lastObserved": 1586847600000,
+        "runId": "looker-test"
+    }
+},
+{
+    "entityType": "chart",
+    "entityUrn": "urn:li:chart:(looker,dashboard_elements.2)",
+    "changeType": "UPSERT",
+    "aspectName": "inputFields",
+    "aspect": {
+        "value": "{\"fields\": [{\"schemaFieldUrn\": \"urn:li:schemaField:(urn:li:chart:(looker,dashboard_elements.2),calc)\", \"schemaField\": {\"fieldPath\": \"calc\", \"nullable\": false, \"description\": \"\", \"label\": \"foobar\", \"type\": {\"type\": {\"com.linkedin.schema.StringType\": {}}}, \"nativeDataType\": \"string\", \"recursive\": false, \"globalTags\": {\"tags\": []}, \"isPartOfKey\": false}}, {\"schemaFieldUrn\": \"urn:li:schemaField:(urn:li:dataset:(urn:li:dataPlatform:looker,data.explore.my_view,PROD),dim1)\", \"schemaField\": {\"fieldPath\": \"dim1\", \"nullable\": false, \"description\": \"dimension one description\", \"label\": \"Dimensions One Label\", \"type\": {\"type\": {\"com.linkedin.schema.StringType\": {}}}, \"nativeDataType\": \"string\", \"recursive\": false, \"globalTags\": {\"tags\": [{\"tag\": \"urn:li:tag:Dimension\"}]}, \"isPartOfKey\": false}}]}",
+        "contentType": "application/json"
+    },
+    "systemMetadata": {
+        "lastObserved": 1586847600000,
+        "runId": "looker-test"
+    }
+},
+{
+    "entityType": "dashboard",
+    "entityUrn": "urn:li:dashboard:(looker,dashboards.1)",
+    "changeType": "UPSERT",
+    "aspectName": "inputFields",
+    "aspect": {
+        "value": "{\"fields\": [{\"schemaFieldUrn\": \"urn:li:schemaField:(urn:li:chart:(looker,dashboard_elements.2),calc)\", \"schemaField\": {\"fieldPath\": \"calc\", \"nullable\": false, \"description\": \"\", \"label\": \"foobar\", \"type\": {\"type\": {\"com.linkedin.schema.StringType\": {}}}, \"nativeDataType\": \"string\", \"recursive\": false, \"globalTags\": {\"tags\": []}, \"isPartOfKey\": false}}, {\"schemaFieldUrn\": \"urn:li:schemaField:(urn:li:dataset:(urn:li:dataPlatform:looker,data.explore.my_view,PROD),dim1)\", \"schemaField\": {\"fieldPath\": \"dim1\", \"nullable\": false, \"description\": \"dimension one description\", \"label\": \"Dimensions One Label\", \"type\": {\"type\": {\"com.linkedin.schema.StringType\": {}}}, \"nativeDataType\": \"string\", \"recursive\": false, \"globalTags\": {\"tags\": [{\"tag\": \"urn:li:tag:Dimension\"}]}, \"isPartOfKey\": false}}]}",
+        "contentType": "application/json"
+    },
+    "systemMetadata": {
+        "lastObserved": 1586847600000,
+        "runId": "looker-test"
+    }
+},
+{
     "proposedSnapshot": {
         "com.linkedin.pegasus2avro.metadata.snapshot.DatasetSnapshot": {
             "urn": "urn:li:dataset:(urn:li:dataPlatform:looker,data.explore.my_view,PROD)",
@@ -54,7 +87,7 @@
                 {
                     "com.linkedin.pegasus2avro.common.BrowsePaths": {
                         "paths": [
-                            "/prod/looker/lkml_samples/explores/data.my_view"
+                            "/prod/looker/lkml_samples/explores"
                         ]
                     }
                 },
@@ -70,8 +103,8 @@
                             "looker.explore.file": "test_source_file.lkml"
                         },
                         "externalUrl": "https://looker.company.com/explore/data/my_view",
+                        "name": "My Explore View",
                         "description": "lorem ipsum",
-                        "uri": null,
                         "tags": []
                     }
                 },
@@ -81,8 +114,7 @@
                             {
                                 "auditStamp": {
                                     "time": 0,
-                                    "actor": "urn:li:corpuser:unknown",
-                                    "impersonator": null
+                                    "actor": "urn:li:corpuser:unknown"
                                 },
                                 "dataset": "urn:li:dataset:(urn:li:dataPlatform:looker,lkml_samples.view.underlying_view,PROD)",
                                 "type": "VIEW"
@@ -97,17 +129,12 @@
                         "version": 0,
                         "created": {
                             "time": 0,
-                            "actor": "urn:li:corpuser:unknown",
-                            "impersonator": null
+                            "actor": "urn:li:corpuser:unknown"
                         },
                         "lastModified": {
                             "time": 0,
-                            "actor": "urn:li:corpuser:unknown",
-                            "impersonator": null
+                            "actor": "urn:li:corpuser:unknown"
                         },
-                        "deleted": null,
-                        "dataset": null,
-                        "cluster": null,
                         "hash": "",
                         "platformSchema": {
                             "com.linkedin.pegasus2avro.schema.OtherSchema": {
@@ -117,9 +144,9 @@
                         "fields": [
                             {
                                 "fieldPath": "dim1",
-                                "jsonPath": null,
                                 "nullable": false,
-                                "description": "",
+                                "description": "dimension one description",
+                                "label": "Dimensions One Label",
                                 "type": {
                                     "type": {
                                         "com.linkedin.pegasus2avro.schema.StringType": {}
@@ -134,40 +161,49 @@
                                         }
                                     ]
                                 },
-                                "glossaryTerms": null,
                                 "isPartOfKey": false
                             }
                         ],
-                        "primaryKeys": [],
-                        "foreignKeysSpecs": null,
-                        "foreignKeys": null
+                        "primaryKeys": []
                     }
                 }
             ]
         }
     },
-    "proposedDelta": null,
     "systemMetadata": {
         "lastObserved": 1586847600000,
-        "runId": "looker-test",
-        "properties": null
+        "runId": "looker-test"
     }
 },
 {
-    "auditHeader": null,
     "entityType": "dataset",
     "entityUrn": "urn:li:dataset:(urn:li:dataPlatform:looker,data.explore.my_view,PROD)",
-    "entityKeyAspect": null,
     "changeType": "UPSERT",
     "aspectName": "subTypes",
     "aspect": {
-        "value": "{\"typeNames\": [\"explore\"]}",
+        "value": "{\"typeNames\": [\"Explore\"]}",
         "contentType": "application/json"
     },
-    "systemMetadata": null
+    "systemMetadata": {
+        "lastObserved": 1586847600000,
+        "runId": "looker-test"
+    }
 },
 {
-    "auditHeader": null,
+    "entityType": "dataset",
+    "entityUrn": "urn:li:dataset:(urn:li:dataPlatform:looker,data.explore.my_view,PROD)",
+    "changeType": "UPSERT",
+    "aspectName": "embed",
+    "aspect": {
+        "value": "{\"renderUrl\": \"https://looker.company.com/embed/explore/data/my_view\"}",
+        "contentType": "application/json"
+    },
+    "systemMetadata": {
+        "lastObserved": 1586847600000,
+        "runId": "looker-test"
+    }
+},
+{
     "proposedSnapshot": {
         "com.linkedin.pegasus2avro.metadata.snapshot.TagSnapshot": {
             "urn": "urn:li:tag:Dimension",
@@ -177,14 +213,12 @@
                         "owners": [
                             {
                                 "owner": "urn:li:corpuser:datahub",
-                                "type": "DATAOWNER",
-                                "source": null
+                                "type": "DATAOWNER"
                             }
                         ],
                         "lastModified": {
                             "time": 0,
-                            "actor": "urn:li:corpuser:unknown",
-                            "impersonator": null
+                            "actor": "urn:li:corpuser:unknown"
                         }
                     }
                 },
@@ -197,15 +231,12 @@
             ]
         }
     },
-    "proposedDelta": null,
     "systemMetadata": {
         "lastObserved": 1586847600000,
-        "runId": "looker-test",
-        "properties": null
+        "runId": "looker-test"
     }
 },
 {
-    "auditHeader": null,
     "proposedSnapshot": {
         "com.linkedin.pegasus2avro.metadata.snapshot.TagSnapshot": {
             "urn": "urn:li:tag:Temporal",
@@ -215,14 +246,12 @@
                         "owners": [
                             {
                                 "owner": "urn:li:corpuser:datahub",
-                                "type": "DATAOWNER",
-                                "source": null
+                                "type": "DATAOWNER"
                             }
                         ],
                         "lastModified": {
                             "time": 0,
-                            "actor": "urn:li:corpuser:unknown",
-                            "impersonator": null
+                            "actor": "urn:li:corpuser:unknown"
                         }
                     }
                 },
@@ -235,15 +264,12 @@
             ]
         }
     },
-    "proposedDelta": null,
     "systemMetadata": {
         "lastObserved": 1586847600000,
-        "runId": "looker-test",
-        "properties": null
+        "runId": "looker-test"
     }
 },
 {
-    "auditHeader": null,
     "proposedSnapshot": {
         "com.linkedin.pegasus2avro.metadata.snapshot.TagSnapshot": {
             "urn": "urn:li:tag:Measure",
@@ -253,14 +279,12 @@
                         "owners": [
                             {
                                 "owner": "urn:li:corpuser:datahub",
-                                "type": "DATAOWNER",
-                                "source": null
+                                "type": "DATAOWNER"
                             }
                         ],
                         "lastModified": {
                             "time": 0,
-                            "actor": "urn:li:corpuser:unknown",
-                            "impersonator": null
+                            "actor": "urn:li:corpuser:unknown"
                         }
                     }
                 },
@@ -273,11 +297,65 @@
             ]
         }
     },
-    "proposedDelta": null,
     "systemMetadata": {
         "lastObserved": 1586847600000,
-        "runId": "looker-test",
-        "properties": null
+        "runId": "looker-test"
+    }
+},
+{
+    "entityType": "chart",
+    "entityUrn": "urn:li:chart:(looker,dashboard_elements.2)",
+    "changeType": "UPSERT",
+    "aspectName": "status",
+    "aspect": {
+        "value": "{\"removed\": false}",
+        "contentType": "application/json"
+    },
+    "systemMetadata": {
+        "lastObserved": 1586847600000,
+        "runId": "looker-test"
+    }
+},
+{
+    "entityType": "tag",
+    "entityUrn": "urn:li:tag:Dimension",
+    "changeType": "UPSERT",
+    "aspectName": "status",
+    "aspect": {
+        "value": "{\"removed\": false}",
+        "contentType": "application/json"
+    },
+    "systemMetadata": {
+        "lastObserved": 1586847600000,
+        "runId": "looker-test"
+    }
+},
+{
+    "entityType": "tag",
+    "entityUrn": "urn:li:tag:Measure",
+    "changeType": "UPSERT",
+    "aspectName": "status",
+    "aspect": {
+        "value": "{\"removed\": false}",
+        "contentType": "application/json"
+    },
+    "systemMetadata": {
+        "lastObserved": 1586847600000,
+        "runId": "looker-test"
+    }
+},
+{
+    "entityType": "tag",
+    "entityUrn": "urn:li:tag:Temporal",
+    "changeType": "UPSERT",
+    "aspectName": "status",
+    "aspect": {
+        "value": "{\"removed\": false}",
+        "contentType": "application/json"
+    },
+    "systemMetadata": {
+        "lastObserved": 1586847600000,
+        "runId": "looker-test"
     }
 }
 ]

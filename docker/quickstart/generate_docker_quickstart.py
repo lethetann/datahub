@@ -1,7 +1,8 @@
 import os
+from collections.abc import Mapping
+
 import click
 import yaml
-from collections.abc import Mapping
 from dotenv import dotenv_values
 from yaml import Loader
 
@@ -25,13 +26,19 @@ def dict_merge(dct, merge_dct):
     for k, v in merge_dct.items():
         if k in dct and isinstance(dct[k], dict) and isinstance(merge_dct[k], Mapping):
             dict_merge(dct[k], merge_dct[k])
+        elif k in dct and isinstance(dct[k], list):
+            a = set(dct[k])
+            b = set(merge_dct[k])
+            if a != b:
+                dct[k] = sorted(list(a.union(b)))
         else:
             dct[k] = merge_dct[k]
 
-
 def modify_docker_config(base_path, docker_yaml_config):
+    if not docker_yaml_config["services"]:
+        docker_yaml_config["services"] = {}
     # 0. Filter out services to be omitted.
-    for key in list(docker_yaml_config["services"]):
+    for key in docker_yaml_config["services"]:
         if key in omitted_services:
             del docker_yaml_config["services"][key]
 
@@ -46,23 +53,29 @@ def modify_docker_config(base_path, docker_yaml_config):
             # 3. Resolve the .env values
             env_vars = dotenv_values(env_file_path)
 
-            # 4. Add an "environment" block to YAML
-            service["environment"] = list(
-                f"{key}={value}" for key, value in env_vars.items()
-            )
+            # 4. Create an "environment" block if it does not exist
+            if "environment" not in service:
+                service["environment"] = list()
 
-            # 5. Delete the "env_file" value
+            # 5. Append to an "environment" block to YAML
+            for key, value in env_vars.items():
+                if value is not None:
+                    service["environment"].append(f"{key}={value}")
+                else:
+                    service["environment"].append(f"{key}")
+
+            # 6. Delete the "env_file" value
             del service["env_file"]
 
-        # 6. Delete build instructions
+        # 7. Delete build instructions
         if "build" in service:
             del service["build"]
 
-        # 7. Set memory limits
+        # 8. Set memory limits
         if name in mem_limits:
             service["mem_limit"] = mem_limits[name]
 
-        # 8. Correct relative paths for volume mounts
+        # 9. Correct relative paths for volume mounts
         if "volumes" in service:
             volumes = service["volumes"]
             for i in range(len(volumes)):
@@ -72,7 +85,7 @@ def modify_docker_config(base_path, docker_yaml_config):
                 elif volumes[i].startswith("./"):
                     volumes[i] = "." + volumes[i]
 
-    # 8. Set docker compose version to 2.
+    # 10. Set docker compose version to 2.
     # We need at least this version, since we use features like start_period for
     # healthchecks and shell-like variable interpolation.
     docker_yaml_config["version"] = "2.3"
@@ -105,6 +118,9 @@ def generate(compose_files, output_file) -> None:
     for modified_file in modified_files:
         dict_merge(merged_docker_config, modified_file)
 
+    # Dedup env vars, last wins
+    dedup_env_vars(merged_docker_config)
+
     # Write output file
     output_dir = os.path.dirname(output_file)
     if len(output_dir) and not os.path.exists(output_dir):
@@ -117,6 +133,27 @@ def generate(compose_files, output_file) -> None:
         )
 
     print(f"Successfully generated {output_file}.")
+
+
+def dedup_env_vars(merged_docker_config):
+    for service in merged_docker_config['services']:
+        if 'environment' in merged_docker_config['services'][service]:
+            lst = merged_docker_config['services'][service]['environment']
+            if lst is not None:
+                # use a set to cache duplicates
+                caches = set()
+                results = {}
+                for item in lst:
+                    partitions = item.rpartition('=')
+                    prefix = partitions[0]
+                    suffix = partitions[1]
+                    # check whether prefix already exists
+                    if prefix not in caches and suffix != "":
+                        results[prefix] = item
+                        caches.add(prefix)
+                if set(lst) != set([v for k,v in results.items()]):
+                    sorted_vars = sorted([k for k in results])
+                    merged_docker_config['services'][service]['environment'] = [results[var] for var in sorted_vars]
 
 
 if __name__ == "__main__":

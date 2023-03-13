@@ -1,15 +1,15 @@
 package com.linkedin.datahub.graphql.resolvers.policy;
 
-import com.datahub.metadata.authorization.AuthorizationManager;
+import com.datahub.authorization.AuthorizerChain;
 import com.linkedin.common.urn.Urn;
 import com.linkedin.datahub.graphql.QueryContext;
 import com.linkedin.datahub.graphql.exception.AuthorizationException;
 import com.linkedin.datahub.graphql.generated.PolicyUpdateInput;
 import com.linkedin.datahub.graphql.resolvers.policy.mappers.PolicyUpdateInputInfoMapper;
-import com.linkedin.entity.client.AspectClient;
+import com.linkedin.entity.client.EntityClient;
 import com.linkedin.events.metadata.ChangeType;
 import com.linkedin.metadata.key.DataHubPolicyKey;
-import com.linkedin.metadata.utils.GenericAspectUtils;
+import com.linkedin.metadata.utils.GenericRecordUtils;
 import com.linkedin.mxe.MetadataChangeProposal;
 import com.linkedin.policy.DataHubPolicyInfo;
 import graphql.schema.DataFetcher;
@@ -25,10 +25,10 @@ public class UpsertPolicyResolver implements DataFetcher<CompletableFuture<Strin
   private static final String POLICY_ENTITY_NAME = "dataHubPolicy";
   private static final String POLICY_INFO_ASPECT_NAME = "dataHubPolicyInfo";
 
-  private final AspectClient _aspectClient;
+  private final EntityClient _entityClient;
 
-  public UpsertPolicyResolver(final AspectClient aspectClient) {
-    _aspectClient = aspectClient;
+  public UpsertPolicyResolver(final EntityClient entityClient) {
+    _entityClient = entityClient;
   }
 
   @Override
@@ -55,22 +55,24 @@ public class UpsertPolicyResolver implements DataFetcher<CompletableFuture<Strin
         // Create the Policy key.
         final DataHubPolicyKey key = new DataHubPolicyKey();
         key.setId(uuidStr);
-        proposal.setEntityKeyAspect(GenericAspectUtils.serializeAspect(key));
+        proposal.setEntityKeyAspect(GenericRecordUtils.serializeAspect(key));
       }
 
       // Create the policy info.
       final DataHubPolicyInfo info = PolicyUpdateInputInfoMapper.map(input);
+      info.setLastUpdatedTimestamp(System.currentTimeMillis());
+
       proposal.setEntityType(POLICY_ENTITY_NAME);
       proposal.setAspectName(POLICY_INFO_ASPECT_NAME);
-      proposal.setAspect(GenericAspectUtils.serializeAspect(info));
+      proposal.setAspect(GenericRecordUtils.serializeAspect(info));
       proposal.setChangeType(ChangeType.UPSERT);
 
       return CompletableFuture.supplyAsync(() -> {
         try {
           // TODO: We should also provide SystemMetadata.
-          String urn = _aspectClient.ingestProposal(proposal, context.getActor()).getEntity();
-          if (context.getAuthorizer() instanceof AuthorizationManager) {
-            ((AuthorizationManager) context.getAuthorizer()).invalidateCache();
+          String urn = _entityClient.ingestProposal(proposal, context.getAuthentication());
+          if (context.getAuthorizer() instanceof AuthorizerChain) {
+            ((AuthorizerChain) context.getAuthorizer()).getDefaultAuthorizer().invalidateCache();
           }
           return urn;
         } catch (Exception e) {

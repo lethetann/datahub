@@ -1,55 +1,46 @@
 package com.linkedin.gms.factory.common;
 
+import com.linkedin.gms.factory.config.ConfigurationProvider;
+import com.linkedin.gms.factory.entityregistry.EntityRegistryFactory;
+import com.linkedin.gms.factory.search.BaseElasticSearchComponentsFactory;
+import com.linkedin.gms.factory.spring.YamlPropertySourceFactory;
+import com.linkedin.metadata.models.registry.LineageRegistry;
 import com.linkedin.metadata.graph.elastic.ESGraphQueryDAO;
 import com.linkedin.metadata.graph.elastic.ESGraphWriteDAO;
 import com.linkedin.metadata.graph.elastic.ElasticSearchGraphService;
-import com.linkedin.metadata.utils.elasticsearch.IndexConvention;
+import com.linkedin.metadata.models.registry.EntityRegistry;
 import javax.annotation.Nonnull;
-import org.elasticsearch.client.RestHighLevelClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.PropertySource;
 
 
 @Configuration
-@Import({RestHighLevelClientFactory.class, IndexConventionFactory.class})
+@PropertySource(value = "classpath:/application.yml", factory = YamlPropertySourceFactory.class)
+@Import({BaseElasticSearchComponentsFactory.class, EntityRegistryFactory.class})
 public class ElasticSearchGraphServiceFactory {
   @Autowired
-  @Qualifier("elasticSearchRestHighLevelClient")
-  private RestHighLevelClient searchClient;
+  @Qualifier("baseElasticSearchComponents")
+  private BaseElasticSearchComponentsFactory.BaseElasticSearchComponents components;
 
   @Autowired
-  @Qualifier(IndexConventionFactory.INDEX_CONVENTION_BEAN)
-  private IndexConvention indexConvention;
+  @Qualifier("entityRegistry")
+  private EntityRegistry entityRegistry;
 
-  @Value("${ES_BULK_REQUESTS_LIMIT:1}")
-  private Integer bulkRequestsLimit;
-
-  @Value("${ES_BULK_FLUSH_PERIOD:1}")
-  private Integer bulkFlushPeriod;
-
-  @Value("${ES_BULK_NUM_RETRIES:3}")
-  private Integer numRetries;
-
-  @Value("${ES_BULK_RETRY_INTERVAL:1}")
-  private Long retryInterval;
+  @Autowired
+  private ConfigurationProvider configurationProvider;
 
   @Bean(name = "elasticSearchGraphService")
   @Nonnull
   protected ElasticSearchGraphService getInstance() {
-    return new ElasticSearchGraphService(
-        searchClient,
-        indexConvention,
-        new ESGraphWriteDAO(
-            searchClient,
-            indexConvention,
-            bulkRequestsLimit,
-            bulkFlushPeriod,
-            numRetries,
-            retryInterval),
-        new ESGraphQueryDAO(searchClient, indexConvention));
+    LineageRegistry lineageRegistry = new LineageRegistry(entityRegistry);
+    return new ElasticSearchGraphService(lineageRegistry, components.getBulkProcessor(), components.getIndexConvention(),
+        new ESGraphWriteDAO(components.getIndexConvention(), components.getBulkProcessor(), components.getNumRetries()),
+        new ESGraphQueryDAO(components.getSearchClient(), lineageRegistry, components.getIndexConvention(),
+                configurationProvider.getElasticSearch().getSearch().getGraph()),
+        components.getIndexBuilder());
   }
 }

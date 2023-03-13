@@ -5,18 +5,21 @@ import akka.stream.ActorMaterializer;
 import akka.stream.Materializer;
 import akka.util.ByteString;
 import auth.Authenticator;
+import com.datahub.authentication.AuthenticationConstants;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.linkedin.metadata.Constants;
-import com.linkedin.util.Configuration;
 import com.linkedin.util.Pair;
 import com.typesafe.config.Config;
-import java.util.HashMap;
+
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
-import play.Play;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import play.Environment;
 import play.http.HttpEntity;
 import play.libs.ws.InMemoryBodyWritable;
 import play.libs.ws.StandaloneWSClient;
@@ -35,38 +38,24 @@ import play.shaded.ahc.org.asynchttpclient.AsyncHttpClient;
 import play.shaded.ahc.org.asynchttpclient.AsyncHttpClientConfig;
 import play.shaded.ahc.org.asynchttpclient.DefaultAsyncHttpClient;
 import play.shaded.ahc.org.asynchttpclient.DefaultAsyncHttpClientConfig;
+import utils.ConfigUtil;
+import java.time.Duration;
 
-import static auth.AuthUtils.*;
+import static auth.AuthUtils.ACTOR;
+import static auth.AuthUtils.SESSION_COOKIE_GMS_TOKEN_NAME;
 
 
 public class Application extends Controller {
-
-  // TODO: Move to constants file.
-  private static final String GMS_HOST_ENV_VAR = "DATAHUB_GMS_HOST";
-  private static final String GMS_PORT_ENV_VAR = "DATAHUB_GMS_PORT";
-  private static final String GMS_USE_SSL_ENV_VAR = "DATAHUB_GMS_USE_SSL";
-  private static final String GMS_SSL_PROTOCOL_VAR = "DATAHUB_GMS_SSL_PROTOCOL";
-
-  private static final String GMS_HOST = Configuration.getEnvironmentVariable(GMS_HOST_ENV_VAR, "localhost");
-  private static final Integer GMS_PORT = Integer.valueOf(Configuration.getEnvironmentVariable(GMS_PORT_ENV_VAR, "8080"));
-  private static final Boolean GMS_USE_SSL = Boolean.parseBoolean(Configuration.getEnvironmentVariable(GMS_USE_SSL_ENV_VAR, "False"));
-  private static final String GMS_SSL_PROTOCOL = Configuration.getEnvironmentVariable(GMS_SSL_PROTOCOL_VAR, null);
-
-  /**
-   * Custom mappings from frontend server paths to metadata-service paths.
-   */
-  private static final Map<String, String> PATH_REMAP = new HashMap<>();
-  static {
-    PATH_REMAP.put("/api/v2/graphql", "/api/graphql");
-  }
-
+  private final Logger _logger = LoggerFactory.getLogger(Application.class.getName());
   private final Config _config;
   private final StandaloneWSClient _ws;
+  private final Environment _environment;
 
   @Inject
-  public Application(@Nonnull Config config) {
+  public Application(Environment environment, @Nonnull Config config) {
     _config = config;
     _ws = createWsClient();
+    _environment = environment;
   }
 
   /**
@@ -78,9 +67,17 @@ public class Application extends Controller {
    */
   @Nonnull
   private Result serveAsset(@Nullable String path) {
-    InputStream indexHtml = Play.application().classloader().getResourceAsStream("public/index.html");
-    response().setHeader("Cache-Control", "no-cache");
-    return ok(indexHtml).as("text/html");
+    try {
+      InputStream indexHtml = _environment.resourceAsStream("public/index.html");
+      return ok(indexHtml)
+              .withHeader("Cache-Control", "no-cache")
+              .as("text/html");
+    } catch (Exception e) {
+      _logger.warn("Cannot load public/index.html resource. Static assets or assets jar missing?");
+      return notFound()
+              .withHeader("Cache-Control", "no-cache")
+              .as("text/html");
+    }
   }
 
   @Nonnull
@@ -105,25 +102,58 @@ public class Application extends Controller {
    * TODO: Investigate using mutual SSL authentication to call Metadata Service.
    */
   @Security.Authenticated(Authenticator.class)
-  public CompletableFuture<Result> proxy(String path) throws ExecutionException, InterruptedException {
-    final String resolvedUri = PATH_REMAP.getOrDefault(request().uri(), request().uri());
-    return _ws.url(String.format("http://%s:%s%s", GMS_HOST, GMS_PORT, resolvedUri))
-        .setMethod(request().method())
-        .setHeaders(request()
-            .getHeaders()
-            .toMap()
+  public CompletableFuture<Result> proxy(String path, Http.Request request) throws ExecutionException, InterruptedException {
+    final String authorizationHeaderValue = getAuthorizationHeaderValueToProxy(request);
+    final String resolvedUri = mapPath(request.uri());
+
+    final String metadataServiceHost = ConfigUtil.getString(
+        _config,
+        ConfigUtil.METADATA_SERVICE_HOST_CONFIG_PATH,
+        ConfigUtil.DEFAULT_METADATA_SERVICE_HOST);
+    final int metadataServicePort = ConfigUtil.getInt(
+        _config,
+        ConfigUtil.METADATA_SERVICE_PORT_CONFIG_PATH,
+        ConfigUtil.DEFAULT_METADATA_SERVICE_PORT);
+    final boolean metadataServiceUseSsl = ConfigUtil.getBoolean(
+        _config,
+        ConfigUtil.METADATA_SERVICE_USE_SSL_CONFIG_PATH,
+        ConfigUtil.DEFAULT_METADATA_SERVICE_USE_SSL
+    );
+
+    // TODO: Fully support custom internal SSL.
+    final String protocol = metadataServiceUseSsl ? "https" : "http";
+
+    final Map<String, List<String>> headers = request.getHeaders().toMap();
+
+    if (headers.containsKey(Http.HeaderNames.HOST) && !headers.containsKey(Http.HeaderNames.X_FORWARDED_HOST)) {
+        headers.put(Http.HeaderNames.X_FORWARDED_HOST, headers.get(Http.HeaderNames.HOST));
+    }
+
+    return _ws.url(String.format("%s://%s:%s%s", protocol, metadataServiceHost, metadataServicePort, resolvedUri))
+        .setMethod(request.method())
+        .setHeaders(headers
             .entrySet()
             .stream()
+            // Remove X-DataHub-Actor to prevent malicious delegation.
+            .filter(entry -> !AuthenticationConstants.LEGACY_X_DATAHUB_ACTOR_HEADER.equalsIgnoreCase(entry.getKey()))
             .filter(entry -> !Http.HeaderNames.CONTENT_LENGTH.equals(entry.getKey()))
+            .filter(entry -> !Http.HeaderNames.CONTENT_TYPE.equals(entry.getKey()))
+            .filter(entry -> !Http.HeaderNames.AUTHORIZATION.equals(entry.getKey()))
+            // Remove Host s.th. service meshes do not route to wrong host
+            .filter(entry -> !Http.HeaderNames.HOST.equals(entry.getKey()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))
         )
-        .addHeader(Constants.ACTOR_HEADER_NAME, ctx().session().get(ACTOR)) // TODO: Replace with a token to GMS.
-        .setBody(new InMemoryBodyWritable(ByteString.fromByteBuffer(request().body().asBytes().asByteBuffer()), "application/json"))
+        .addHeader(Http.HeaderNames.AUTHORIZATION, authorizationHeaderValue)
+        .addHeader(AuthenticationConstants.LEGACY_X_DATAHUB_ACTOR_HEADER, getDataHubActorHeader(request))
+        .setBody(new InMemoryBodyWritable(ByteString.fromByteBuffer(request.body().asBytes().asByteBuffer()), "application/json"))
+        .setRequestTimeout(Duration.ofSeconds(120))
         .execute()
         .thenApply(apiResponse -> {
           final ResponseHeader header = new ResponseHeader(apiResponse.getStatus(), apiResponse.getHeaders()
               .entrySet()
               .stream()
+              .filter(entry -> !Http.HeaderNames.CONTENT_LENGTH.equals(entry.getKey()))
+              .filter(entry -> !Http.HeaderNames.CONTENT_TYPE.equals(entry.getKey()))
               .map(entry -> Pair.of(entry.getKey(), String.join(";", entry.getValue())))
               .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond)));
           final HttpEntity body = new HttpEntity.Strict(apiResponse.getBodyAsBytes(), Optional.ofNullable(apiResponse.getContentType()));
@@ -139,6 +169,7 @@ public class Application extends Controller {
   @Nonnull
   public Result appConfig() {
     final ObjectNode config = Json.newObject();
+    config.put("application", "datahub-frontend");
     config.put("appVersion", _config.getString("app.version"));
     config.put("isInternal", _config.getBoolean("linkedin.internal"));
     config.put("shouldShowDatasetLineage", _config.getBoolean("linkedin.show.dataset.lineage"));
@@ -232,11 +263,72 @@ public class Application extends Controller {
     Materializer materializer = ActorMaterializer.create(system);
     AsyncHttpClientConfig asyncHttpClientConfig =
         new DefaultAsyncHttpClientConfig.Builder()
+            .setDisableUrlEncodingForBoundRequests(true)
             .setMaxRequestRetry(0)
             .setShutdownQuietPeriod(0)
             .setShutdownTimeout(0)
             .build();
     AsyncHttpClient asyncHttpClient = new DefaultAsyncHttpClient(asyncHttpClientConfig);
     return new StandaloneAhcWSClient(asyncHttpClient, materializer);
+  }
+
+  /**
+   * Returns the value of the Authorization Header to be provided when proxying requests to the downstream Metadata Service.
+   *
+   * Currently, the Authorization header value may be derived from
+   *
+   * a) The value of the "token" attribute of the Session Cookie provided by the client. This value is set
+   * when creating the session token initially from a token granted by the Metadata Service.
+   *
+   * Or if the "token" attribute cannot be found in a session cookie, then we fallback to
+   *
+   * b) The value of the Authorization
+   * header provided in the original request. This will be used in cases where clients are making programmatic requests
+   * to Metadata Service APIs directly, without providing a session cookie (ui only).
+   *
+   * If neither are found, an empty string is returned.
+   */
+  private String getAuthorizationHeaderValueToProxy(Http.Request request) {
+    // If the session cookie has an authorization token, use that. If there's an authorization header provided, simply
+    // use that.
+    String value = "";
+    if (request.session().data().containsKey(SESSION_COOKIE_GMS_TOKEN_NAME)) {
+      value = "Bearer " + request.session().data().get(SESSION_COOKIE_GMS_TOKEN_NAME);
+    } else if (request.getHeaders().contains(Http.HeaderNames.AUTHORIZATION)) {
+      value = request.getHeaders().get(Http.HeaderNames.AUTHORIZATION).get();
+    }
+    return value;
+  }
+
+  /**
+   * Returns the value of the legacy X-DataHub-Actor header to forward to the Metadata Service. This is sent along
+   * with any requests that have a valid frontend session cookie to identify the calling actor, for backwards compatibility.
+   *
+   * If Metadata Service authentication is enabled, this value is not required because Actor context will most often come
+   * from the authentication credentials provided in the Authorization header.
+   */
+  private String getDataHubActorHeader(Http.Request request) {
+    String actor = request.session().data().get(ACTOR);
+    return actor == null ? "" : actor;
+  }
+
+  private String mapPath(@Nonnull final String path) {
+    // Case 1: Map legacy GraphQL path to GMS GraphQL API (for compatibility)
+    if (path.equals("/api/v2/graphql")) {
+      return "/api/graphql";
+    }
+
+    // Case 2: Map requests to /gms to / (Rest.li API)
+    final String gmsApiPath = "/api/gms";
+    if (path.startsWith(gmsApiPath)) {
+      String newPath = path.substring(gmsApiPath.length());
+      if (!newPath.startsWith("/")) {
+        newPath = "/" + newPath;
+      }
+      return newPath;
+    }
+
+    // Otherwise, return original path
+    return path;
   }
 }

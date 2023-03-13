@@ -1,125 +1,67 @@
-# Metadata Ingestion
+# Introduction to Metadata Ingestion
 
-![Python version 3.6+](https://img.shields.io/badge/python-3.6%2B-blue)
+## Integration Options
 
-This module hosts an extensible Python-based metadata ingestion system for DataHub.
-This supports sending data to DataHub using Kafka or through the REST API.
-It can be used through our CLI tool, with an orchestrator like Airflow, or as a library.
+DataHub supports both **push-based** and **pull-based** metadata integration.
+
+Push-based integrations allow you to emit metadata directly from your data systems when metadata changes, while pull-based integrations allow you to "crawl" or "ingest" metadata from the data systems by connecting to them and extracting metadata in a batch or incremental-batch manner. Supporting both mechanisms means that you can integrate with all your systems in the most flexible way possible.
+
+Examples of push-based integrations include [Airflow](../docs/lineage/airflow.md), [Spark](../metadata-integration/java/spark-lineage/README.md), [Great Expectations](./integration_docs/great-expectations.md) and [Protobuf Schemas](../metadata-integration/java/datahub-protobuf/README.md). This allows you to get low-latency metadata integration from the "active" agents in your data ecosystem. Examples of pull-based integrations include BigQuery, Snowflake, Looker, Tableau and many others.
+
+This document describes the pull-based metadata ingestion system that is built into DataHub for easy integration with a wide variety of sources in your data stack.
 
 ## Getting Started
 
 ### Prerequisites
 
-Before running any metadata ingestion job, you should make sure that DataHub backend services are all running. If you are trying this out locally, the easiest way to do that is through [quickstart Docker images](../docker).
+Before running any metadata ingestion job, you should make sure that DataHub backend services are all running. You can either run ingestion via the [UI](../docs/ui-ingestion.md) or via the [CLI](../docs/cli.md). You can reference the CLI usage guide given there as you go through this page.
 
-### Install from PyPI
+## Core Concepts
 
-The folks over at [Acryl Data](https://www.acryl.io/) maintain a PyPI package for DataHub metadata ingestion.
+### Sources
 
-```shell
-# Requires Python 3.6+
-python3 -m pip install --upgrade pip wheel setuptools
-python3 -m pip install --upgrade acryl-datahub
-datahub version
-# If you see "command not found", try running this instead: python3 -m datahub version
-```
+Data systems that we are extracting metadata from are referred to as **Sources**. The `Sources` tab on the left in the sidebar shows you all the sources that are available for you to ingest metadata from. For example, we have sources for [BigQuery](https://datahubproject.io/docs/generated/ingestion/sources/bigquery), [Looker](https://datahubproject.io/docs/generated/ingestion/sources/looker), [Tableau](https://datahubproject.io/docs/generated/ingestion/sources/tableau) and many others.
 
-If you run into an error, try checking the [_common setup issues_](./developing.md#Common-setup-issues).
+#### Metadata Ingestion Source Status
 
-#### Installing Plugins
+We apply a Support Status to each Metadata Source to help you understand the integration reliability at a glance.
 
-We use a plugin architecture so that you can install only the dependencies you actually need. Click the plugin name to learn more about the specific source recipe and any FAQs!
+![Certified](https://img.shields.io/badge/support%20status-certified-brightgreen): Certified Sources are well-tested & widely-adopted by the DataHub Community. We expect the integration to be stable with few user-facing issues.
 
-Sources:
+![Incubating](https://img.shields.io/badge/support%20status-incubating-blue): Incubating Sources are ready for DataHub Community adoption but have not been tested for a wide variety of edge-cases. We eagerly solicit feedback from the Community to streghten the connector; minor version changes may arise in future releases.
 
-| Plugin Name                                     | Install Command                                            | Provides                            |
-| ----------------------------------------------- | ---------------------------------------------------------- | ----------------------------------- |
-| [file](./source_docs/file.md)                   | _included by default_                                      | File source and sink                |
-| [athena](./source_docs/athena.md)               | `pip install 'acryl-datahub[athena]'`                      | AWS Athena source                   |
-| [bigquery](./source_docs/bigquery.md)           | `pip install 'acryl-datahub[bigquery]'`                    | BigQuery source                     |
-| [bigquery-usage](./source_docs/bigquery.md)     | `pip install 'acryl-datahub[bigquery-usage]'`              | BigQuery usage statistics source    |
-| [datahub-business-glossary](./source_docs/business_glossary.md)                     | _no additional dependencies_                               | Business Glossary File source                          |
-| [dbt](./source_docs/dbt.md)                     | _no additional dependencies_                               | dbt source                          |
-| [druid](./source_docs/druid.md)                 | `pip install 'acryl-datahub[druid]'`                       | Druid Source                        |
-| [feast](./source_docs/feast.md)                 | `pip install 'acryl-datahub[feast]'`                       | Feast source                        |
-| [glue](./source_docs/glue.md)                   | `pip install 'acryl-datahub[glue]'`                        | AWS Glue source                     |
-| [hive](./source_docs/hive.md)                   | `pip install 'acryl-datahub[hive]'`                        | Hive source                         |
-| [kafka](./source_docs/kafka.md)                 | `pip install 'acryl-datahub[kafka]'`                       | Kafka source                        |
-| [kafka-connect](./source_docs/kafka-connect.md) | `pip install 'acryl-datahub[kafka-connect]'`               | Kafka connect source                |
-| [ldap](./source_docs/ldap.md)                   | `pip install 'acryl-datahub[ldap]'` ([extra requirements]) | LDAP source                         |
-| [looker](./source_docs/looker.md)               | `pip install 'acryl-datahub[looker]'`                      | Looker source                       |
-| [lookml](./source_docs/lookml.md)               | `pip install 'acryl-datahub[lookml]'`                      | LookML source, requires Python 3.7+ |
-| [mongodb](./source_docs/mongodb.md)             | `pip install 'acryl-datahub[mongodb]'`                     | MongoDB source                      |
-| [mssql](./source_docs/mssql.md)                 | `pip install 'acryl-datahub[mssql]'`                       | SQL Server source                   |
-| [mysql](./source_docs/mysql.md)                 | `pip install 'acryl-datahub[mysql]'`                       | MySQL source                        |
-| [oracle](./source_docs/oracle.md)               | `pip install 'acryl-datahub[oracle]'`                      | Oracle source                       |
-| [postgres](./source_docs/postgres.md)           | `pip install 'acryl-datahub[postgres]'`                    | Postgres source                     |
-| [redash](./source_docs/redash.md)               | `pip install 'acryl-datahub[redash]'`                      | Redash source                       |
-| [redshift](./source_docs/redshift.md)           | `pip install 'acryl-datahub[redshift]'`                    | Redshift source                     |
-| [sagemaker](./source_docs/sagemaker.md)         | `pip install 'acryl-datahub[sagemaker]'`                   | AWS SageMaker source                |
-| [snowflake](./source_docs/snowflake.md)         | `pip install 'acryl-datahub[snowflake]'`                   | Snowflake source                    |
-| [snowflake-usage](./source_docs/snowflake.md)   | `pip install 'acryl-datahub[snowflake-usage]'`             | Snowflake usage statistics source   |
-| [sql-profiles](./source_docs/sql_profiles.md)   | `pip install 'acryl-datahub[sql-profiles]'`                | Data profiles for SQL-based systems |
-| [sqlalchemy](./source_docs/sqlalchemy.md)       | `pip install 'acryl-datahub[sqlalchemy]'`                  | Generic SQLAlchemy source           |
-| [superset](./source_docs/superset.md)           | `pip install 'acryl-datahub[superset]'`                    | Superset source                     |
-| [trino](./source_docs/trino.md)                 | `pip install 'acryl-datahub[trino]`                        | Trino source                     |
+![Testing](https://img.shields.io/badge/support%20status-testing-lightgrey): Testing Sources are available for experiementation by DataHub Community members, but may change without notice.
 
-Sinks
+### Sinks
 
-| Plugin Name                             | Install Command                              | Provides                   |
-| --------------------------------------- | -------------------------------------------- | -------------------------- |
-| [file](./sink_docs/file.md)             | _included by default_                        | File source and sink       |
-| [console](./sink_docs/console.md)       | _included by default_                        | Console sink               |
-| [datahub-rest](./sink_docs/datahub.md)  | `pip install 'acryl-datahub[datahub-rest]'`  | DataHub sink over REST API |
-| [datahub-kafka](./sink_docs/datahub.md) | `pip install 'acryl-datahub[datahub-kafka]'` | DataHub sink over Kafka    |
+Sinks are destinations for metadata. When configuring ingestion for DataHub, you're likely to be sending the metadata to DataHub over either the [REST (datahub-sink)](./sink_docs/datahub.md#datahub-rest) or the [Kafka (datahub-kafka)](./sink_docs/datahub.md#datahub-kafka) sink. In some cases, the [File](./sink_docs/file.md) sink is also helpful to store a persistent offline copy of the metadata during debugging.
 
-These plugins can be mixed and matched as desired. For example:
+The default sink that most of the ingestion systems and guides assume is the `datahub-rest` sink, but you should be able to adapt all of them for the other sinks as well!
 
-```shell
-pip install 'acryl-datahub[bigquery,datahub-rest]'
-```
+### Recipes
 
-You can check the active plugins:
+A recipe is the main configuration file that puts it all together. It tells our ingestion scripts where to pull data from (source) and where to put it (sink).
 
-```shell
-datahub check plugins
-```
+:::tip
+Name your recipe with **.dhub.yaml** extension like _myrecipe.dhub.yaml_ to use vscode or intellij as a recipe editor with autocomplete
+and syntax validation.
 
-[extra requirements]: https://www.python-ldap.org/en/python-ldap-3.3.0/installing.html#build-prerequisites
+Make sure yaml plugin is installed for your editor:
 
-#### Basic Usage
+- For vscode install [Redhat's yaml plugin](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml)
+- For intellij install [official yaml plugin](https://plugins.jetbrains.com/plugin/13126-yaml)
 
-```shell
-pip install 'acryl-datahub[datahub-rest]'  # install the required plugin
-datahub ingest -c ./examples/recipes/example_to_datahub_rest.yml
-```
+:::
 
-### Install using Docker
+Since `acryl-datahub` version `>=0.8.33.2`, the default sink is assumed to be a DataHub REST endpoint:
 
-[![Docker Hub](https://img.shields.io/docker/pulls/linkedin/datahub-ingestion?style=plastic)](https://hub.docker.com/r/linkedin/datahub-ingestion)
-[![datahub-ingestion docker](https://github.com/linkedin/datahub/actions/workflows/docker-ingestion.yml/badge.svg)](https://github.com/linkedin/datahub/actions/workflows/docker-ingestion.yml)
+- Hosted at "http://localhost:8080" or the environment variable `${DATAHUB_GMS_URL}` if present
+- With an empty auth token or the environment variable `${DATAHUB_GMS_TOKEN}` if present.
 
-If you don't want to install locally, you can alternatively run metadata ingestion within a Docker container.
-We have prebuilt images available on [Docker hub](https://hub.docker.com/r/linkedin/datahub-ingestion). All plugins will be installed and enabled automatically.
-
-_Limitation: the datahub_docker.sh convenience script assumes that the recipe and any input/output files are accessible in the current working directory or its subdirectories. Files outside the current working directory will not be found, and you'll need to invoke the Docker image directly._
-
-```shell
-# Assumes the DataHub repo is cloned locally.
-./metadata-ingestion/scripts/datahub_docker.sh ingest -c ./examples/recipes/example_to_datahub_rest.yml
-```
-
-### Install from source
-
-If you'd like to install from source, see the [developer guide](./developing.md).
-
-## Recipes
-
-A recipe is a configuration file that tells our ingestion scripts where to pull data from (source) and where to put it (sink).
-Here's a simple example that pulls metadata from MSSQL and puts it into datahub.
+Here's a simple recipe that pulls metadata from MSSQL (source) and puts it into the default sink (datahub rest).
 
 ```yaml
-# A sample recipe that pulls metadata from MSSQL and puts it into DataHub
+# The simplest recipe that pulls metadata from MSSQL and puts it into DataHub
 # using the Rest API.
 source:
   type: mssql
@@ -127,115 +69,132 @@ source:
     username: sa
     password: ${MSSQL_PASSWORD}
     database: DemoData
-
-transformers:
-  - type: "fully-qualified-class-name-of-transformer"
-    config:
-      some_property: "some.value"
-
-sink:
-  type: "datahub-rest"
-  config:
-    server: "http://localhost:8080"
+# sink section omitted as we want to use the default datahub-rest sink
 ```
 
-We automatically expand environment variables in the config,
-similar to variable substitution in GNU bash or in docker-compose files. For details, see
-https://docs.docker.com/compose/compose-file/compose-file-v2/#variable-substitution.
-
-Running a recipe is quite easy.
+Running this recipe is as simple as:
 
 ```shell
-datahub ingest -c ./examples/recipes/mssql_to_datahub.yml
+datahub ingest -c recipe.dhub.yaml
 ```
 
-A number of recipes are included in the [examples/recipes](./examples/recipes) directory. For full info and context on each source and sink, see the pages described in the [table of plugins](#installing-plugins).
+or if you want to override the default endpoints, you can provide the environment variables as part of the command like below:
+
+```shell
+DATAHUB_GMS_URL="https://my-datahub-server:8080" DATAHUB_GMS_TOKEN="my-datahub-token" datahub ingest -c recipe.dhub.yaml
+```
+
+A number of recipes are included in the [examples/recipes](./examples/recipes) directory. For full info and context on each source and sink, see the pages described in the [table of plugins](../docs/cli.md#installing-plugins).
+
+> Note that one recipe file can only have 1 source and 1 sink. If you want multiple sources then you will need multiple recipe files.
+
+### Handling sensitive information in recipes
+
+We automatically expand environment variables in the config (e.g. `${MSSQL_PASSWORD}`),
+similar to variable substitution in GNU bash or in docker-compose files. For details, see
+https://docs.docker.com/compose/compose-file/compose-file-v2/#variable-substitution. This environment variable substitution should be used to mask sensitive information in recipe files. As long as you can get env variables securely to the ingestion process there would not be any need to store sensitive information in recipes.
+
+### Basic Usage of CLI for ingestion
+
+```shell
+pip install 'acryl-datahub[datahub-rest]'  # install the required plugin
+datahub ingest -c ./examples/recipes/mssql_to_datahub.dhub.yml
+```
+
+The `--dry-run` option of the `ingest` command performs all of the ingestion steps, except writing to the sink. This is useful to validate that the
+ingestion recipe is producing the desired metadata events before ingesting them into datahub.
+
+```shell
+# Dry run
+datahub ingest -c ./examples/recipes/example_to_datahub_rest.dhub.yml --dry-run
+# Short-form
+datahub ingest -c ./examples/recipes/example_to_datahub_rest.dhub.yml -n
+```
+
+The `--preview` option of the `ingest` command performs all of the ingestion steps, but limits the processing to only the first 10 workunits produced by the source.
+This option helps with quick end-to-end smoke testing of the ingestion recipe.
+
+```shell
+# Preview
+datahub ingest -c ./examples/recipes/example_to_datahub_rest.dhub.yml --preview
+# Preview with dry-run
+datahub ingest -c ./examples/recipes/example_to_datahub_rest.dhub.yml -n --preview
+```
+
+By default `--preview` creates 10 workunits. But if you wish to try producing more workunits you can use another option `--preview-workunits`
+
+```shell
+# Preview 20 workunits without sending anything to sink
+datahub ingest -c ./examples/recipes/example_to_datahub_rest.dhub.yml -n --preview --preview-workunits=20
+```
+
+#### Reporting
+
+By default, the cli sends an ingestion report to DataHub, which allows you to see the result of all cli-based ingestion in the UI. This can be turned off with the `--no-default-report` flag.
+
+```shell
+# Running ingestion with reporting to DataHub turned off
+datahub ingest -c ./examples/recipes/example_to_datahub_rest.dhub.yaml --no-default-report
+```
+
+The reports include the recipe that was used for ingestion. This can be turned off by adding an additional section to the ingestion recipe.
+
+```yaml
+source:
+  # source configs
+
+sink:
+  # sink configs
+
+# Add configuration for the datahub reporter
+reporting:
+  - type: datahub
+    config:
+      report_recipe: false
+```
 
 ## Transformations
 
-If you'd like to modify data before it reaches the ingestion sinks – for instance, adding additional owners or tags – you can use a transformer to write your own module and integrate it with DataHub.
+If you'd like to modify data before it reaches the ingestion sinks – for instance, adding additional owners or tags – you can use a transformer to write your own module and integrate it with DataHub. Transformers require extending the recipe with a new section to describe the transformers that you want to run.
 
-Check out the [transformers guide](./transformers.md) for more info!
+For example, a pipeline that ingests metadata from MSSQL and applies a default "important" tag to all datasets is described below:
 
-## Using as a library
+```yaml
+# A recipe to ingest metadata from MSSQL and apply default tags to all tables
+source:
+  type: mssql
+  config:
+    username: sa
+    password: ${MSSQL_PASSWORD}
+    database: DemoData
 
-In some cases, you might want to construct the MetadataChangeEvents yourself but still use this framework to emit that metadata to DataHub. In this case, take a look at the emitter interfaces, which can easily be imported and called from your own code.
-
-- [DataHub emitter via REST](./src/datahub/emitter/rest_emitter.py) (same requirements as `datahub-rest`). Basic usage [example](./examples/library/lineage_emitter_rest.py).
-- [DataHub emitter via Kafka](./src/datahub/emitter/kafka_emitter.py) (same requirements as `datahub-kafka`). Basic usage [example](./examples/library/lineage_emitter_kafka.py).
-
-## Lineage with Airflow
-
-There's a couple ways to get lineage information from Airflow into DataHub.
-
-:::note
-
-If you're simply looking to run ingestion on a schedule, take a look at these sample DAGs:
-
-- [`generic_recipe_sample_dag.py`](./src/datahub_provider/example_dags/generic_recipe_sample_dag.py) - reads a DataHub ingestion recipe file and runs it
-- [`mysql_sample_dag.py`](./src/datahub_provider/example_dags/mysql_sample_dag.py) - runs a MySQL metadata ingestion pipeline using an inlined configuration.
-
-:::
-
-### Using Datahub's Airflow lineage backend (recommended)
-
-:::caution
-
-The Airflow lineage backend is only supported in Airflow 1.10.15+ and 2.0.2+.
-
-:::
-
-### Running on Docker locally
-
-If you are looking to run Airflow and DataHub using docker locally, follow the guide [here](../docker/airflow/local_airflow.md). Otherwise proceed to follow the instructions below.
-
-### Setting up Airflow to use DataHub as Lineage Backend
-
-1. You need to install the required dependency in your airflow. See https://registry.astronomer.io/providers/datahub/modules/datahublineagebackend
-
-```shell
-  pip install acryl-datahub[airflow]
+transformers: # an array of transformers applied sequentially
+  - type: simple_add_dataset_tags
+    config:
+      tag_urns:
+        - "urn:li:tag:Important"
+# default sink, no config needed
 ```
 
-2. You must configure an Airflow hook for Datahub. We support both a Datahub REST hook and a Kafka-based hook, but you only need one.
+Check out the [transformers guide](./docs/transformer/intro.md) to learn more about how you can create really flexible pipelines for processing metadata using Transformers!
 
-   ```shell
-   # For REST-based:
-   airflow connections add  --conn-type 'datahub_rest' 'datahub_rest_default' --conn-host 'http://localhost:8080'
-   # For Kafka-based (standard Kafka sink config can be passed via extras):
-   airflow connections add  --conn-type 'datahub_kafka' 'datahub_kafka_default' --conn-host 'broker:9092' --conn-extra '{}'
-   ```
+## Using as a library (SDK)
 
-3. Add the following lines to your `airflow.cfg` file.
-   ```ini
-   [lineage]
-   backend = datahub_provider.lineage.datahub.DatahubLineageBackend
-   datahub_kwargs = {
-       "datahub_conn_id": "datahub_rest_default",
-       "cluster": "prod",
-       "capture_ownership_info": true,
-       "capture_tags_info": true,
-       "graceful_exceptions": true }
-   # The above indentation is important!
-   ```
-   **Configuration options:**
-   - `datahub_conn_id` (required): Usually `datahub_rest_default` or `datahub_kafka_default`, depending on what you named the connection in step 1.
-   - `cluster` (defaults to "prod"): The "cluster" to associate Airflow DAGs and tasks with.
-   - `capture_ownership_info` (defaults to true): If true, the owners field of the DAG will be capture as a DataHub corpuser.
-   - `capture_tags_info` (defaults to true): If true, the tags field of the DAG will be captured as DataHub tags.
-   - `graceful_exceptions` (defaults to true): If set to true, most runtime errors in the lineage backend will be suppressed and will not cause the overall task to fail. Note that configuration issues will still throw exceptions.
-4. Configure `inlets` and `outlets` for your Airflow operators. For reference, look at the sample DAG in [`lineage_backend_demo.py`](./src/datahub_provider/example_dags/lineage_backend_demo.py), or reference [`lineage_backend_taskflow_demo.py`](./src/datahub_provider/example_dags/lineage_backend_taskflow_demo.py) if you're using the [TaskFlow API](https://airflow.apache.org/docs/apache-airflow/stable/concepts/taskflow.html).
-5. [optional] Learn more about [Airflow lineage](https://airflow.apache.org/docs/apache-airflow/stable/lineage.html), including shorthand notation and some automation.
+In some cases, you might want to construct Metadata events directly and use programmatic ways to emit that metadata to DataHub. In this case, take a look at the [Python emitter](./as-a-library.md) and the [Java emitter](../metadata-integration/java/as-a-library.md) libraries which can be called from your own code.
 
-### Emitting lineage via a separate operator
+### Programmatic Pipeline
 
-Take a look at this sample DAG:
+In some cases, you might want to configure and run a pipeline entirely from within your custom Python script. Here is an example of how to do it.
 
-- [`lineage_emission_dag.py`](./src/datahub_provider/example_dags/lineage_emission_dag.py) - emits lineage using the DatahubEmitterOperator.
-
-In order to use this example, you must first configure the Datahub hook. Like in ingestion, we support a Datahub REST hook and a Kafka-based hook. See step 1 above for details.
+- [programmatic_pipeline.py](./examples/library/programatic_pipeline.py) - a basic mysql to REST programmatic pipeline.
 
 ## Developing
 
-See the guides on [developing](./developing.md), [adding a source](./adding-source.md) and [using transformers](./transformers.md).
+See the guides on [developing](./developing.md), [adding a source](./adding-source.md) and [using transformers](./docs/transformer/intro.md).
 
+## Compatibility
+
+DataHub server uses a 3 digit versioning scheme, while the CLI uses a 4 digit scheme. For example, if you're using DataHub server version 0.10.0, you should use CLI version 0.10.0.x, where x is a patch version.
+We do this because we do CLI releases at a much higher frequency than server releases, usually every few days vs twice a month.
+
+For ingestion sources, any breaking changes will be highlighted in the [release notes](../docs/how/updating-datahub.md). When fields are deprecated or otherwise changed, we will try to maintain backwards compatibility for two server releases, which is about 4-6 weeks. The CLI will also print warnings whenever deprecated options are used.

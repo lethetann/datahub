@@ -1,6 +1,7 @@
 package com.linkedin.metadata.models;
 
 import com.datahub.test.BrowsePaths;
+import com.datahub.test.SearchFeatures;
 import com.datahub.test.Snapshot;
 import com.datahub.test.TestEntityInfo;
 import com.datahub.test.TestEntityKey;
@@ -8,12 +9,18 @@ import com.datahub.test.invalid.DuplicateSearchableFields;
 import com.datahub.test.invalid.InvalidSearchableFieldType;
 import com.datahub.test.invalid.MissingAspectAnnotation;
 import com.datahub.test.invalid.MissingRelationshipName;
+import com.datahub.test.invalid.NonNumericSearchScoreField;
+import com.datahub.test.invalid.NonSingularSearchScoreField;
 import com.linkedin.data.schema.PathSpec;
+import com.linkedin.data.template.RecordTemplate;
 import com.linkedin.metadata.models.annotation.SearchableAnnotation;
 import java.util.List;
 import java.util.Map;
 import org.testng.annotations.Test;
-import static org.testng.Assert.*;
+
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertThrows;
+import static org.testng.Assert.assertTrue;
 
 
 /**
@@ -24,31 +31,48 @@ public class EntitySpecBuilderTest {
   @Test
   public void testBuildAspectSpecValidationAspectMissingAnnotation() {
     assertThrows(ModelValidationException.class, () ->
-      new EntitySpecBuilder().buildAspectSpec(new MissingAspectAnnotation().schema())
+      new EntitySpecBuilder().buildAspectSpec(new MissingAspectAnnotation().schema(), RecordTemplate.class)
     );
   }
 
   @Test
   public void testBuildAspectSpecValidationInvalidSearchableFieldType() {
     assertThrows(ModelValidationException.class, () ->
-        new EntitySpecBuilder().buildAspectSpec(new InvalidSearchableFieldType().schema())
+        new EntitySpecBuilder().buildAspectSpec(new InvalidSearchableFieldType().schema(), RecordTemplate.class)
     );
   }
 
   @Test
   public void testBuildAspectSpecValidationDuplicateSearchableFields() {
-    assertThrows(ModelValidationException.class, () ->
-        new EntitySpecBuilder().buildAspectSpec(new DuplicateSearchableFields().schema())
-    );
+    AspectSpec aspectSpec = new EntitySpecBuilder()
+        .buildAspectSpec(new DuplicateSearchableFields().schema(), RecordTemplate.class);
+
+    aspectSpec.getSearchableFieldSpecs().forEach(searchableFieldSpec -> {
+        String name = searchableFieldSpec.getSearchableAnnotation().getFieldName();
+        assertTrue("textField".equals(name) || "textField2".equals(name));
+    });
   }
 
   @Test
   public void testBuildAspectSpecValidationMissingRelationshipName() {
     assertThrows(ModelValidationException.class, () ->
-        new EntitySpecBuilder().buildAspectSpec(new MissingRelationshipName().schema())
+        new EntitySpecBuilder().buildAspectSpec(new MissingRelationshipName().schema(), RecordTemplate.class)
     );
   }
 
+  @Test
+  public void testBuildAspectSpecValidationNonNumericSearchScoreField() {
+    assertThrows(ModelValidationException.class, () ->
+        new EntitySpecBuilder().buildAspectSpec(new NonNumericSearchScoreField().schema(), RecordTemplate.class)
+    );
+  }
+
+  @Test
+  public void testBuildAspectSpecValidationNonSingularSearchScoreField() {
+    assertThrows(ModelValidationException.class, () ->
+        new EntitySpecBuilder().buildAspectSpec(new NonSingularSearchScoreField().schema(), RecordTemplate.class)
+    );
+  }
   @Test
   public void testBuildEntitySpecs() {
 
@@ -65,10 +89,11 @@ public class EntitySpecBuilderTest {
 
     // Assert on Aspect Specs
     final Map<String, AspectSpec> aspectSpecMap = testEntitySpec.getAspectSpecMap();
-    assertEquals(3, aspectSpecMap.size());
+    assertEquals(4, aspectSpecMap.size());
     assertTrue(aspectSpecMap.containsKey("testEntityKey"));
     assertTrue(aspectSpecMap.containsKey("browsePaths"));
     assertTrue(aspectSpecMap.containsKey("testEntityInfo"));
+    assertTrue(aspectSpecMap.containsKey("searchFeatures"));
 
     // Assert on TestEntityKey
     validateTestEntityKey(aspectSpecMap.get("testEntityKey"));
@@ -78,6 +103,9 @@ public class EntitySpecBuilderTest {
 
     // Assert on TestEntityInfo Aspect
     validateTestEntityInfo(aspectSpecMap.get("testEntityInfo"));
+
+    // Assert on SearchFeatures Aspect
+    validateSearchFeatures(aspectSpecMap.get("searchFeatures"));
   }
 
   private void validateTestEntityKey(final AspectSpec keyAspectSpec) {
@@ -85,7 +113,7 @@ public class EntitySpecBuilderTest {
     assertEquals(new TestEntityKey().schema().getFullName(), keyAspectSpec.getPegasusSchema().getFullName());
 
     // Assert on Searchable Fields
-    assertEquals(2, keyAspectSpec.getSearchableFieldSpecs().size());
+    assertEquals(2, keyAspectSpec.getSearchableFieldSpecs().size()); // keyPart1, keyPart3
     assertEquals("keyPart1", keyAspectSpec.getSearchableFieldSpecMap().get(new PathSpec("keyPart1").toString())
         .getSearchableAnnotation().getFieldName());
     assertEquals(SearchableAnnotation.FieldType.TEXT, keyAspectSpec.getSearchableFieldSpecMap().get(new PathSpec("keyPart1").toString())
@@ -114,7 +142,7 @@ public class EntitySpecBuilderTest {
     assertEquals(new TestEntityInfo().schema().getFullName(), testEntityInfo.getPegasusSchema().getFullName());
 
     // Assert on Searchable Fields
-    assertEquals(8, testEntityInfo.getSearchableFieldSpecs().size());
+    assertEquals(9, testEntityInfo.getSearchableFieldSpecs().size());
     assertEquals("customProperties", testEntityInfo.getSearchableFieldSpecMap().get(
         new PathSpec("customProperties").toString()).getSearchableAnnotation().getFieldName());
     assertEquals(SearchableAnnotation.FieldType.KEYWORD, testEntityInfo.getSearchableFieldSpecMap().get(
@@ -147,6 +175,16 @@ public class EntitySpecBuilderTest {
     assertEquals(SearchableAnnotation.FieldType.TEXT, testEntityInfo.getSearchableFieldSpecMap().get(
         new PathSpec("nestedRecordArrayField", "*", "nestedArrayArrayField", "*").toString())
         .getSearchableAnnotation().getFieldType());
+    assertEquals("esObjectField", testEntityInfo.getSearchableFieldSpecMap().get(
+        new PathSpec("esObjectField").toString()).getSearchableAnnotation().getFieldName());
+    assertEquals(SearchableAnnotation.FieldType.OBJECT, testEntityInfo.getSearchableFieldSpecMap().get(
+            new PathSpec("esObjectField").toString())
+        .getSearchableAnnotation().getFieldType());
+    assertEquals("foreignKey", testEntityInfo.getSearchableFieldSpecMap().get(
+            new PathSpec("foreignKey").toString()).getSearchableAnnotation().getFieldName());
+    assertEquals(true, testEntityInfo.getSearchableFieldSpecMap().get(
+            new PathSpec("foreignKey").toString()).getSearchableAnnotation().isQueryByDefault());
+
 
     // Assert on Relationship Fields
     assertEquals(4, testEntityInfo.getRelationshipFieldSpecs().size());
@@ -158,6 +196,21 @@ public class EntitySpecBuilderTest {
         new PathSpec("nestedRecordField", "nestedForeignKey").toString()).getRelationshipName());
     assertEquals("nestedArrayForeignKey", testEntityInfo.getRelationshipFieldSpecMap().get(
         new PathSpec("nestedRecordArrayField", "*", "nestedArrayForeignKey").toString()).getRelationshipName());
+  }
+
+  private void validateSearchFeatures(final AspectSpec searchFeaturesAspectSpec) {
+    assertEquals("searchFeatures", searchFeaturesAspectSpec.getName());
+    assertEquals(new SearchFeatures().schema().getFullName(),
+        searchFeaturesAspectSpec.getPegasusSchema().getFullName());
+    assertEquals(2, searchFeaturesAspectSpec.getSearchScoreFieldSpecs().size());
+    assertEquals("feature1", searchFeaturesAspectSpec.getSearchScoreFieldSpecMap()
+        .get(new PathSpec("feature1").toString())
+        .getSearchScoreAnnotation()
+        .getFieldName());
+    assertEquals("feature2", searchFeaturesAspectSpec.getSearchScoreFieldSpecMap()
+        .get(new PathSpec("feature2").toString())
+        .getSearchScoreAnnotation()
+        .getFieldName());
   }
 
 }

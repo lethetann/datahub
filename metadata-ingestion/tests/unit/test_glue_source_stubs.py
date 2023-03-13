@@ -34,57 +34,43 @@ get_databases_response = {
         },
     ]
 }
-get_tables_response_1 = {
-    "TableList": [
-        {
-            "Name": "avro",
-            "DatabaseName": "flights-database",
-            "Owner": "owner",
-            "CreateTime": datetime.datetime(2021, 6, 9, 14, 17, 35),
-            "UpdateTime": datetime.datetime(2021, 6, 9, 14, 17, 35),
-            "LastAccessTime": datetime.datetime(2021, 6, 9, 14, 17, 35),
-            "Retention": 0,
-            "StorageDescriptor": {
-                "Columns": [
-                    {"Name": "yr", "Type": "int"},
-                    {"Name": "flightdate", "Type": "string"},
-                    {"Name": "uniquecarrier", "Type": "string"},
-                    {"Name": "airlineid", "Type": "int"},
-                    {"Name": "carrier", "Type": "string"},
-                    {"Name": "flightnum", "Type": "string"},
-                    {"Name": "origin", "Type": "string"},
-                ],
-                "Location": "s3://crawler-public-us-west-2/flight/avro/",
-                "InputFormat": "org.apache.hadoop.hive.ql.io.avro.AvroContainerInputFormat",
-                "OutputFormat": "org.apache.hadoop.hive.ql.io.avro.AvroContainerOutputFormat",
-                "Compressed": False,
-                "NumberOfBuckets": -1,
-                "SerdeInfo": {
-                    "SerializationLibrary": "org.apache.hadoop.hive.serde2.avro.AvroSerDe",
-                    "Parameters": {
-                        "avro.schema.literal": '{"type":"record","name":"flights_avro_subset","namespace":"default","fields":[{"name":"yr","type":["null","int"],"default":null},{"name":"flightdate","type":["null","string"],"default":null},{"name":"uniquecarrier","type":["null","string"],"default":null},{"name":"airlineid","type":["null","int"],"default":null},{"name":"carrier","type":["null","string"],"default":null},{"name":"flightnum","type":["null","string"],"default":null},{"name":"origin","type":["null","string"],"default":null},{"name":"dest","type":["null","string"],"default":null},{"name":"depdelay","type":["null","int"],"default":null},{"name":"carrierdelay","type":["null","int"],"default":null},{"name":"weatherdelay","type":["null","int"],"default":null}]}',
-                        "serialization.format": "1",
-                    },
-                },
-                "BucketColumns": [],
-                "SortColumns": [],
+databases_1 = {
+    "flights-database": {"Name": "flights-database", "CatalogId": "123412341234"}
+}
+databases_2 = {"test-database": {"Name": "test-database", "CatalogId": "123412341234"}}
+tables_1 = [
+    {
+        "Name": "avro",
+        "DatabaseName": "flights-database",
+        "Owner": "owner",
+        "CreateTime": datetime.datetime(2021, 6, 9, 14, 17, 35),
+        "UpdateTime": datetime.datetime(2021, 6, 9, 14, 17, 35),
+        "LastAccessTime": datetime.datetime(2021, 6, 9, 14, 17, 35),
+        "Retention": 0,
+        "StorageDescriptor": {
+            "Columns": [
+                {"Name": "yr", "Type": "int"},
+                {"Name": "flightdate", "Type": "string"},
+                {"Name": "uniquecarrier", "Type": "string"},
+                {"Name": "airlineid", "Type": "int"},
+                {"Name": "carrier", "Type": "string"},
+                {"Name": "flightnum", "Type": "string"},
+                {"Name": "origin", "Type": "string"},
+            ],
+            "Location": "s3://crawler-public-us-west-2/flight/avro/",
+            "InputFormat": "org.apache.hadoop.hive.ql.io.avro.AvroContainerInputFormat",
+            "OutputFormat": "org.apache.hadoop.hive.ql.io.avro.AvroContainerOutputFormat",
+            "Compressed": False,
+            "NumberOfBuckets": -1,
+            "SerdeInfo": {
+                "SerializationLibrary": "org.apache.hadoop.hive.serde2.avro.AvroSerDe",
                 "Parameters": {
-                    "CrawlerSchemaDeserializerVersion": "1.0",
-                    "CrawlerSchemaSerializerVersion": "1.0",
-                    "UPDATED_BY_CRAWLER": "flights-crawler",
-                    "averageRecordSize": "55",
                     "avro.schema.literal": '{"type":"record","name":"flights_avro_subset","namespace":"default","fields":[{"name":"yr","type":["null","int"],"default":null},{"name":"flightdate","type":["null","string"],"default":null},{"name":"uniquecarrier","type":["null","string"],"default":null},{"name":"airlineid","type":["null","int"],"default":null},{"name":"carrier","type":["null","string"],"default":null},{"name":"flightnum","type":["null","string"],"default":null},{"name":"origin","type":["null","string"],"default":null},{"name":"dest","type":["null","string"],"default":null},{"name":"depdelay","type":["null","int"],"default":null},{"name":"carrierdelay","type":["null","int"],"default":null},{"name":"weatherdelay","type":["null","int"],"default":null}]}',
-                    "classification": "avro",
-                    "compressionType": "none",
-                    "objectCount": "30",
-                    "recordCount": "169222196",
-                    "sizeKey": "9503351413",
-                    "typeOfData": "file",
+                    "serialization.format": "1",
                 },
-                "StoredAsSubDirectories": False,
             },
-            "PartitionKeys": [{"Name": "year", "Type": "string"}],
-            "TableType": "EXTERNAL_TABLE",
+            "BucketColumns": [],
+            "SortColumns": [],
             "Parameters": {
                 "CrawlerSchemaDeserializerVersion": "1.0",
                 "CrawlerSchemaSerializerVersion": "1.0",
@@ -98,56 +84,56 @@ get_tables_response_1 = {
                 "sizeKey": "9503351413",
                 "typeOfData": "file",
             },
-            "CreatedBy": "arn:aws:sts::123412341234:assumed-role/AWSGlueServiceRole-flights-crawler/AWS-Crawler",
-            "IsRegisteredWithLakeFormation": False,
-            "CatalogId": "123412341234",
-        }
-    ]
-}
-get_tables_response_2 = {
-    "TableList": [
-        {
-            "Name": "test_jsons_markers",
-            "DatabaseName": "test-database",
-            "Owner": "owner",
-            "CreateTime": datetime.datetime(2021, 6, 2, 12, 6, 59),
-            "UpdateTime": datetime.datetime(2021, 6, 2, 12, 6, 59),
-            "LastAccessTime": datetime.datetime(2021, 6, 2, 12, 6, 59),
-            "Retention": 0,
-            "StorageDescriptor": {
-                "Columns": [
-                    {
-                        "Name": "markers",
-                        "Type": "array<struct<name:string,position:array<double>,location:array<double>>>",
-                    }
-                ],
-                "Location": "s3://test-glue-jsons/markers/",
-                "InputFormat": "org.apache.hadoop.mapred.TextInputFormat",
-                "OutputFormat": "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat",
-                "Compressed": False,
-                "NumberOfBuckets": -1,
-                "SerdeInfo": {
-                    "SerializationLibrary": "org.openx.data.jsonserde.JsonSerDe",
-                    "Parameters": {"paths": "markers"},
-                },
-                "BucketColumns": [],
-                "SortColumns": [],
-                "Parameters": {
-                    "CrawlerSchemaDeserializerVersion": "1.0",
-                    "CrawlerSchemaSerializerVersion": "1.0",
-                    "UPDATED_BY_CRAWLER": "test-jsons",
-                    "averageRecordSize": "273",
-                    "classification": "json",
-                    "compressionType": "none",
-                    "objectCount": "1",
-                    "recordCount": "1",
-                    "sizeKey": "273",
-                    "typeOfData": "file",
-                },
-                "StoredAsSubDirectories": False,
+            "StoredAsSubDirectories": False,
+        },
+        "PartitionKeys": [{"Name": "year", "Type": "string"}],
+        "TableType": "EXTERNAL_TABLE",
+        "Parameters": {
+            "CrawlerSchemaDeserializerVersion": "1.0",
+            "CrawlerSchemaSerializerVersion": "1.0",
+            "UPDATED_BY_CRAWLER": "flights-crawler",
+            "averageRecordSize": "55",
+            "avro.schema.literal": '{"type":"record","name":"flights_avro_subset","namespace":"default","fields":[{"name":"yr","type":["null","int"],"default":null},{"name":"flightdate","type":["null","string"],"default":null},{"name":"uniquecarrier","type":["null","string"],"default":null},{"name":"airlineid","type":["null","int"],"default":null},{"name":"carrier","type":["null","string"],"default":null},{"name":"flightnum","type":["null","string"],"default":null},{"name":"origin","type":["null","string"],"default":null},{"name":"dest","type":["null","string"],"default":null},{"name":"depdelay","type":["null","int"],"default":null},{"name":"carrierdelay","type":["null","int"],"default":null},{"name":"weatherdelay","type":["null","int"],"default":null}]}',
+            "classification": "avro",
+            "compressionType": "none",
+            "objectCount": "30",
+            "recordCount": "169222196",
+            "sizeKey": "9503351413",
+            "typeOfData": "file",
+        },
+        "CreatedBy": "arn:aws:sts::123412341234:assumed-role/AWSGlueServiceRole-flights-crawler/AWS-Crawler",
+        "IsRegisteredWithLakeFormation": False,
+        "CatalogId": "123412341234",
+    }
+]
+get_tables_response_1 = {"TableList": tables_1}
+tables_2 = [
+    {
+        "Name": "test_jsons_markers",
+        "DatabaseName": "test-database",
+        "Owner": "owner",
+        "CreateTime": datetime.datetime(2021, 6, 2, 12, 6, 59),
+        "UpdateTime": datetime.datetime(2021, 6, 2, 12, 6, 59),
+        "LastAccessTime": datetime.datetime(2021, 6, 2, 12, 6, 59),
+        "Retention": 0,
+        "StorageDescriptor": {
+            "Columns": [
+                {
+                    "Name": "markers",
+                    "Type": "array<struct<name:string,position:array<double>,location:array<double>>>",
+                }
+            ],
+            "Location": "s3://test-glue-jsons/markers/",
+            "InputFormat": "org.apache.hadoop.mapred.TextInputFormat",
+            "OutputFormat": "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat",
+            "Compressed": False,
+            "NumberOfBuckets": -1,
+            "SerdeInfo": {
+                "SerializationLibrary": "org.openx.data.jsonserde.JsonSerDe",
+                "Parameters": {"paths": "markers"},
             },
-            "PartitionKeys": [],
-            "TableType": "EXTERNAL_TABLE",
+            "BucketColumns": [],
+            "SortColumns": [],
             "Parameters": {
                 "CrawlerSchemaDeserializerVersion": "1.0",
                 "CrawlerSchemaSerializerVersion": "1.0",
@@ -160,52 +146,52 @@ get_tables_response_2 = {
                 "sizeKey": "273",
                 "typeOfData": "file",
             },
-            "CreatedBy": "arn:aws:sts::795586375822:assumed-role/AWSGlueServiceRole-test-crawler/AWS-Crawler",
-            "IsRegisteredWithLakeFormation": False,
-            "CatalogId": "795586375822",
+            "StoredAsSubDirectories": False,
         },
-        {
-            "Name": "test_parquet",
-            "DatabaseName": "test-database",
-            "Owner": "owner",
-            "CreateTime": datetime.datetime(2021, 6, 1, 16, 14, 53),
-            "UpdateTime": datetime.datetime(2021, 6, 1, 16, 14, 53),
-            "LastAccessTime": datetime.datetime(2021, 6, 1, 16, 14, 53),
-            "Retention": 0,
-            "StorageDescriptor": {
-                "Columns": [
-                    {"Name": "yr", "Type": "int"},
-                    {"Name": "quarter", "Type": "int"},
-                    {"Name": "month", "Type": "int"},
-                    {"Name": "dayofmonth", "Type": "int"},
-                ],
-                "Location": "s3://crawler-public-us-west-2/flight/parquet/",
-                "InputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat",
-                "OutputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat",
-                "Compressed": False,
-                "NumberOfBuckets": -1,
-                "SerdeInfo": {
-                    "SerializationLibrary": "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe",
-                    "Parameters": {"serialization.format": "1"},
-                },
-                "BucketColumns": [],
-                "SortColumns": [],
-                "Parameters": {
-                    "CrawlerSchemaDeserializerVersion": "1.0",
-                    "CrawlerSchemaSerializerVersion": "1.0",
-                    "UPDATED_BY_CRAWLER": "test",
-                    "averageRecordSize": "19",
-                    "classification": "parquet",
-                    "compressionType": "none",
-                    "objectCount": "60",
-                    "recordCount": "167497743",
-                    "sizeKey": "4463574900",
-                    "typeOfData": "file",
-                },
-                "StoredAsSubDirectories": False,
+        "PartitionKeys": [],
+        "TableType": "EXTERNAL_TABLE",
+        "Parameters": {
+            "CrawlerSchemaDeserializerVersion": "1.0",
+            "CrawlerSchemaSerializerVersion": "1.0",
+            "UPDATED_BY_CRAWLER": "test-jsons",
+            "averageRecordSize": "273",
+            "classification": "json",
+            "compressionType": "none",
+            "objectCount": "1",
+            "recordCount": "1",
+            "sizeKey": "273",
+            "typeOfData": "file",
+        },
+        "CreatedBy": "arn:aws:sts::795586375822:assumed-role/AWSGlueServiceRole-test-crawler/AWS-Crawler",
+        "IsRegisteredWithLakeFormation": False,
+        "CatalogId": "795586375822",
+    },
+    {
+        "Name": "test_parquet",
+        "DatabaseName": "test-database",
+        "Owner": "owner",
+        "CreateTime": datetime.datetime(2021, 6, 1, 16, 14, 53),
+        "UpdateTime": datetime.datetime(2021, 6, 1, 16, 14, 53),
+        "LastAccessTime": datetime.datetime(2021, 6, 1, 16, 14, 53),
+        "Retention": 0,
+        "StorageDescriptor": {
+            "Columns": [
+                {"Name": "yr", "Type": "int"},
+                {"Name": "quarter", "Type": "int"},
+                {"Name": "month", "Type": "int"},
+                {"Name": "dayofmonth", "Type": "int"},
+            ],
+            "Location": "s3://crawler-public-us-west-2/flight/parquet/",
+            "InputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat",
+            "OutputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat",
+            "Compressed": False,
+            "NumberOfBuckets": -1,
+            "SerdeInfo": {
+                "SerializationLibrary": "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe",
+                "Parameters": {"serialization.format": "1"},
             },
-            "PartitionKeys": [{"Name": "year", "Type": "string"}],
-            "TableType": "EXTERNAL_TABLE",
+            "BucketColumns": [],
+            "SortColumns": [],
             "Parameters": {
                 "CrawlerSchemaDeserializerVersion": "1.0",
                 "CrawlerSchemaSerializerVersion": "1.0",
@@ -218,12 +204,28 @@ get_tables_response_2 = {
                 "sizeKey": "4463574900",
                 "typeOfData": "file",
             },
-            "CreatedBy": "arn:aws:sts::795586375822:assumed-role/AWSGlueServiceRole-test-crawler/AWS-Crawler",
-            "IsRegisteredWithLakeFormation": False,
-            "CatalogId": "795586375822",
+            "StoredAsSubDirectories": False,
         },
-    ]
-}
+        "PartitionKeys": [{"Name": "year", "Type": "string"}],
+        "TableType": "EXTERNAL_TABLE",
+        "Parameters": {
+            "CrawlerSchemaDeserializerVersion": "1.0",
+            "CrawlerSchemaSerializerVersion": "1.0",
+            "UPDATED_BY_CRAWLER": "test",
+            "averageRecordSize": "19",
+            "classification": "parquet",
+            "compressionType": "none",
+            "objectCount": "60",
+            "recordCount": "167497743",
+            "sizeKey": "4463574900",
+            "typeOfData": "file",
+        },
+        "CreatedBy": "arn:aws:sts::795586375822:assumed-role/AWSGlueServiceRole-test-crawler/AWS-Crawler",
+        "IsRegisteredWithLakeFormation": False,
+        "CatalogId": "795586375822",
+    },
+]
+get_tables_response_2 = {"TableList": tables_2}
 get_jobs_response = {
     "Jobs": [
         {
@@ -296,7 +298,7 @@ get_jobs_response = {
 get_dataflow_graph_response_1 = {
     "DagNodes": [
         {
-            "Id": "Transform0",
+            "Id": "Transform0_job1",
             "NodeType": "Filter",
             "Args": [
                 {"Name": "f", "Value": "lambda row : ()", "Param": False},
@@ -309,7 +311,7 @@ get_dataflow_graph_response_1 = {
             "LineNumber": 32,
         },
         {
-            "Id": "Transform1",
+            "Id": "Transform1_job1",
             "NodeType": "ApplyMapping",
             "Args": [
                 {
@@ -326,7 +328,7 @@ get_dataflow_graph_response_1 = {
             "LineNumber": 37,
         },
         {
-            "Id": "Transform2",
+            "Id": "Transform2_job1",
             "NodeType": "ApplyMapping",
             "Args": [
                 {
@@ -343,7 +345,7 @@ get_dataflow_graph_response_1 = {
             "LineNumber": 22,
         },
         {
-            "Id": "Transform3",
+            "Id": "Transform3_job1",
             "NodeType": "Join",
             "Args": [
                 {
@@ -361,7 +363,7 @@ get_dataflow_graph_response_1 = {
             "LineNumber": 47,
         },
         {
-            "Id": "DataSource0",
+            "Id": "DataSource0_job1",
             "NodeType": "DataSource",
             "Args": [
                 {
@@ -379,7 +381,7 @@ get_dataflow_graph_response_1 = {
             "LineNumber": 17,
         },
         {
-            "Id": "DataSink0",
+            "Id": "DataSink0_job1",
             "NodeType": "DataSink",
             "Args": [
                 {
@@ -401,7 +403,7 @@ get_dataflow_graph_response_1 = {
             "LineNumber": 57,
         },
         {
-            "Id": "Transform4",
+            "Id": "Transform4_job1",
             "NodeType": "ApplyMapping",
             "Args": [
                 {
@@ -418,7 +420,7 @@ get_dataflow_graph_response_1 = {
             "LineNumber": 27,
         },
         {
-            "Id": "Transform5",
+            "Id": "Transform5_job1",
             "NodeType": "ApplyMapping",
             "Args": [
                 {
@@ -435,7 +437,7 @@ get_dataflow_graph_response_1 = {
             "LineNumber": 42,
         },
         {
-            "Id": "DataSink1",
+            "Id": "DataSink1_job1",
             "NodeType": "DataSink",
             "Args": [
                 {"Name": "connection_type", "Value": '"s3"', "Param": False},
@@ -456,23 +458,23 @@ get_dataflow_graph_response_1 = {
     ],
     "DagEdges": [
         {
-            "Source": "Transform2",
-            "Target": "Transform0",
+            "Source": "Transform2_job1",
+            "Target": "Transform0_job1",
             "TargetParameter": "frame",
         },
         {
-            "Source": "Transform0",
-            "Target": "Transform1",
+            "Source": "Transform0_job1",
+            "Target": "Transform1_job1",
             "TargetParameter": "frame",
         },
         {
-            "Source": "DataSource0",
-            "Target": "Transform2",
+            "Source": "DataSource0_job1",
+            "Target": "Transform2_job1",
             "TargetParameter": "frame",
         },
         {
-            "Source": "Transform4",
-            "Target": "Transform3",
+            "Source": "Transform4_job1",
+            "Target": "Transform3_job1",
             "TargetParameter": "frame1",
         },
     ],
@@ -481,7 +483,7 @@ get_dataflow_graph_response_1 = {
 get_dataflow_graph_response_2 = {
     "DagNodes": [
         {
-            "Id": "Transform0",
+            "Id": "Transform0_job2",
             "NodeType": "SplitFields",
             "Args": [
                 {
@@ -508,7 +510,7 @@ get_dataflow_graph_response_2 = {
             "LineNumber": 42,
         },
         {
-            "Id": "Transform1",
+            "Id": "Transform1_job2",
             "NodeType": "ApplyMapping",
             "Args": [
                 {
@@ -525,7 +527,7 @@ get_dataflow_graph_response_2 = {
             "LineNumber": 22,
         },
         {
-            "Id": "Transform2",
+            "Id": "Transform2_job2",
             "NodeType": "FillMissingValues",
             "Args": [
                 {
@@ -542,7 +544,7 @@ get_dataflow_graph_response_2 = {
             "LineNumber": 27,
         },
         {
-            "Id": "Transform3",
+            "Id": "Transform3_job2",
             "NodeType": "SelectFields",
             "Args": [
                 {"Name": "paths", "Value": "[]", "Param": False},
@@ -555,7 +557,7 @@ get_dataflow_graph_response_2 = {
             "LineNumber": 32,
         },
         {
-            "Id": "DataSource0",
+            "Id": "DataSource0_job2",
             "NodeType": "DataSource",
             "Args": [
                 {
@@ -577,7 +579,7 @@ get_dataflow_graph_response_2 = {
             "LineNumber": 17,
         },
         {
-            "Id": "DataSink0",
+            "Id": "DataSink0_job2",
             "NodeType": "DataSink",
             "Args": [
                 {"Name": "connection_type", "Value": '"s3"', "Param": False},
@@ -598,28 +600,28 @@ get_dataflow_graph_response_2 = {
     ],
     "DagEdges": [
         {
-            "Source": "Transform1",
-            "Target": "Transform0",
+            "Source": "Transform1_job2",
+            "Target": "Transform0_job2",
             "TargetParameter": "frame",
         },
         {
-            "Source": "DataSource0",
-            "Target": "Transform1",
+            "Source": "DataSource0_job2",
+            "Target": "Transform1_job2",
             "TargetParameter": "frame",
         },
         {
-            "Source": "Transform1",
-            "Target": "Transform2",
+            "Source": "Transform1_job2",
+            "Target": "Transform2_job2",
             "TargetParameter": "frame",
         },
         {
-            "Source": "Transform2",
-            "Target": "Transform3",
+            "Source": "Transform2_job2",
+            "Target": "Transform3_job2",
             "TargetParameter": "frame",
         },
         {
-            "Source": "Transform3",
-            "Target": "DataSink0",
+            "Source": "Transform3_job2",
+            "Target": "DataSink0_job2",
             "TargetParameter": "frame",
         },
     ],
@@ -759,5 +761,17 @@ def mock_get_object_response(raw_body: str) -> Dict[str, Any]:
     return {"Body": raw_stream}
 
 
-get_object_response_1 = mock_get_object_response(get_object_body_1)
-get_object_response_2 = mock_get_object_response(get_object_body_2)
+def get_object_response_1() -> Dict[str, Any]:
+    return mock_get_object_response(get_object_body_1)
+
+
+def get_object_response_2() -> Dict[str, Any]:
+    return mock_get_object_response(get_object_body_2)
+
+
+def get_bucket_tagging() -> Dict[str, Any]:
+    return {"TagSet": [{"Key": "foo", "Value": "bar"}]}
+
+
+def get_object_tagging() -> Dict[str, Any]:
+    return {"TagSet": [{"Key": "baz", "Value": "bob"}]}

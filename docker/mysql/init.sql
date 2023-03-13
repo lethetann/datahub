@@ -8,8 +8,9 @@ CREATE TABLE metadata_aspect_v2 (
   createdon                     datetime(6) NOT NULL,
   createdby                     VARCHAR(255) NOT NULL,
   createdfor                    VARCHAR(255),
-  CONSTRAINT pk_metadata_aspect_v2 PRIMARY KEY (urn,aspect,version)
-) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  constraint pk_metadata_aspect_v2 primary key (urn,aspect,version),
+  INDEX timeIndex (createdon)
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 
 INSERT INTO metadata_aspect_v2 (urn, aspect, version, metadata, createdon, createdby) VALUES(
   'urn:li:corpuser:datahub',
@@ -22,7 +23,7 @@ INSERT INTO metadata_aspect_v2 (urn, aspect, version, metadata, createdon, creat
   'urn:li:corpuser:datahub',
   'corpUserEditableInfo',
   0,
-  '{"skills":[],"teams":[],"pictureLink":"https://raw.githubusercontent.com/linkedin/datahub/master/datahub-web-react/src/images/default_avatar.png"}',
+  '{"skills":[],"teams":[],"pictureLink":"https://raw.githubusercontent.com/datahub-project/datahub/master/datahub-web-react/src/images/default_avatar.png"}',
   now(),
   'urn:li:corpuser:__datahub_system'
 );

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import styled from 'styled-components';
+import styled from 'styled-components/macro';
 import { message, Button, List, Typography } from 'antd';
 import { LinkOutlined, DeleteOutlined } from '@ant-design/icons';
 import { EntityType } from '../../../../../../types.generated';
@@ -82,9 +82,7 @@ export const LinkList = ({ refetch }: LinkListProps) => {
                                     <>
                                         Added {formatDateString(link.created.time)} by{' '}
                                         <Link
-                                            to={`/${entityRegistry.getPathName(EntityType.CorpUser)}/${
-                                                link.author.urn
-                                            }`}
+                                            to={`${entityRegistry.getEntityUrl(EntityType.CorpUser, link.author.urn)}`}
                                         >
                                             {link.author.username}
                                         </Link>

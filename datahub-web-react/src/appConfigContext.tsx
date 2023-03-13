@@ -13,6 +13,30 @@ export const DEFAULT_APP_CONFIG = {
     identityManagementConfig: {
         enabled: false,
     },
+    managedIngestionConfig: {
+        enabled: false,
+    },
+    lineageConfig: {
+        supportsImpactAnalysis: false,
+    },
+    visualConfig: {
+        logoUrl: undefined,
+        queriesTab: {
+            queriesTabResultSize: 5,
+        },
+    },
+    authConfig: {
+        tokenAuthEnabled: false,
+    },
+    telemetryConfig: {
+        enableThirdPartyLogging: false,
+    },
+    testsConfig: {
+        enabled: false,
+    },
+    viewsConfig: {
+        enabled: false,
+    },
 };
 
 export const AppConfigContext = React.createContext<{

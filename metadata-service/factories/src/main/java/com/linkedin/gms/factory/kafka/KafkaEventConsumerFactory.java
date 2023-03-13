@@ -3,6 +3,7 @@ package com.linkedin.gms.factory.kafka;
 import com.linkedin.gms.factory.kafka.schemaregistry.AwsGlueSchemaRegistryFactory;
 import com.linkedin.gms.factory.kafka.schemaregistry.KafkaSchemaRegistryFactory;
 import com.linkedin.gms.factory.kafka.schemaregistry.SchemaRegistryConfig;
+import com.linkedin.gms.factory.spring.YamlPropertySourceFactory;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Map;
@@ -18,6 +19,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
@@ -25,15 +27,19 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 
 @Slf4j
 @Configuration
+@PropertySource(value = "classpath:/application.yml", factory = YamlPropertySourceFactory.class)
 @EnableConfigurationProperties(KafkaProperties.class)
 @Import({KafkaSchemaRegistryFactory.class, AwsGlueSchemaRegistryFactory.class})
 public class KafkaEventConsumerFactory {
 
-  @Value("${KAFKA_BOOTSTRAP_SERVER:http://localhost:9092}")
+  @Value("${kafka.bootstrapServers}")
   private String kafkaBootstrapServers;
 
-  @Value("${SCHEMA_REGISTRY_TYPE:KAFKA}")
+  @Value("${kafka.schemaRegistry.type}")
   private String schemaRegistryType;
+
+  @Value("${kafka.listener.concurrency:1}")
+  private Integer kafkaListenerConcurrency;
 
   @Autowired
   @Lazy
@@ -45,9 +51,13 @@ public class KafkaEventConsumerFactory {
   @Qualifier("awsGlueSchemaRegistry")
   private SchemaRegistryConfig awsGlueSchemaRegistryConfig;
 
-  @Bean(name = "kafkaEventConsumer")
-  protected KafkaListenerContainerFactory<?> createInstance(KafkaProperties properties) {
+  @Bean(name = "kafkaEventConsumerConcurrency")
+  protected int kafkaEventConsumerConcurrency() {
+    return kafkaListenerConcurrency;
+  }
 
+  @Bean(name = "kafkaConsumerFactory")
+  public DefaultKafkaConsumerFactory<String, GenericRecord> defaultKafkaConsumerFactory(KafkaProperties properties) {
     KafkaProperties.Consumer consumerProps = properties.getConsumer();
 
     // Specify (de)serializers for record keys and for record values.
@@ -70,13 +80,29 @@ public class KafkaEventConsumerFactory {
 
     consumerProps.setValueDeserializer(schemaRegistryConfig.getDeserializer());
     Map<String, Object> props = properties.buildConsumerProperties();
-    props.putAll(schemaRegistryConfig.getProperties());
+
+    // Override KafkaProperties with SchemaRegistryConfig only for non-empty values
+    schemaRegistryConfig.getProperties().entrySet()
+        .stream()
+        .filter(entry -> entry.getValue() != null && !entry.getValue().toString().isEmpty())
+        .forEach(entry -> props.put(entry.getKey(), entry.getValue()));
+
+    return new DefaultKafkaConsumerFactory<>(props);
+  }
+
+  @Bean(name = "kafkaEventConsumer")
+  protected KafkaListenerContainerFactory<?> createInstance(
+          @Qualifier("kafkaConsumerFactory") DefaultKafkaConsumerFactory<String, GenericRecord> defaultKafkaConsumerFactory,
+          @Qualifier("kafkaEventConsumerConcurrency") int concurrency) {
 
     ConcurrentKafkaListenerContainerFactory<String, GenericRecord> factory =
-        new ConcurrentKafkaListenerContainerFactory<>();
-    factory.setConsumerFactory(new DefaultKafkaConsumerFactory<>(props));
+            new ConcurrentKafkaListenerContainerFactory<>();
+    factory.setConsumerFactory(defaultKafkaConsumerFactory);
+    factory.setContainerCustomizer(new ThreadPoolContainerCustomizer());
+    factory.setConcurrency(concurrency);
 
-    log.info("Event-based KafkaListenerContainerFactory built successfully");
+    log.info(String.format("Event-based KafkaListenerContainerFactory built successfully. Consumers = %s",
+            concurrency));
 
     return factory;
   }

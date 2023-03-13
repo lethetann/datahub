@@ -1,20 +1,38 @@
+require("dotenv").config();
+const isSaas = process.env.DOCUSAURUS_IS_SAAS === "true";
+
 module.exports = {
-  title: "DataHub",
+  title: process.env.DOCUSAURUS_CONFIG_TITLE || "DataHub",
   tagline: "A Metadata Platform for the Modern Data Stack",
-  url: "https://datahubproject.io",
-  baseUrl: "/",
+  url: process.env.DOCUSAURUS_CONFIG_URL || "https://datahubproject.io",
+  baseUrl: process.env.DOCUSAURUS_CONFIG_BASE_URL || "/",
   onBrokenLinks: "throw",
   onBrokenMarkdownLinks: "throw",
   favicon: "img/favicon.ico",
-  organizationName: "linkedin", // Usually your GitHub org/user name.
+  organizationName: "datahub-project", // Usually your GitHub org/user name.
   projectName: "datahub", // Usually your repo name.
+  stylesheets: ["https://fonts.googleapis.com/css2?family=Manrope:wght@400;600&display=swap"],
+  noIndex: isSaas,
+  customFields: {
+    isSaas: isSaas,
+  },
   themeConfig: {
+    ...(!isSaas && {
+      announcementBar: {
+        id: "announcement",
+        content:
+          '<div><img src="/img/acryl-logo-white-mark.svg" /><p><strong>Managed DataHub</strong><span> &nbsp;Acryl Data delivers an easy to consume DataHub platform for the enterprise</span></p></div> <a href="https://www.acryldata.io/datahub-sign-up" target="_blank" class="button button--primary">Sign up for Managed DataHub&nbsp;→</a>',
+        backgroundColor: "#070707",
+        textColor: "#ffffff",
+        isCloseable: false,
+      },
+    }),
     navbar: {
-      title: "DataHub",
+      title: null,
       logo: {
         alt: "DataHub Logo",
-        src: "img/logo-color.png",
-        srcDark: "img/logo-dark.png",
+        src: `img/${isSaas ? "acryl" : "datahub"}-logo-color-light-horizontal.svg`,
+        srcDark: `img/${isSaas ? "acryl" : "datahub"}-logo-color-dark-horizontal.svg`,
       },
       items: [
         {
@@ -29,20 +47,38 @@ module.exports = {
           position: "right",
         },
         {
+          href: "https://blog.datahubproject.io/",
+          label: "Blog",
+          position: "right",
+        },
+        {
+          href: "https://feature-requests.datahubproject.io/",
+          label: "Feature Requests",
+          position: "right",
+        },
+        {
+          href: "https://feature-requests.datahubproject.io/roadmap",
+          label: "Roadmap",
+          position: "right",
+        },
+        {
           href: "https://slack.datahubproject.io",
-          label: "Slack",
+          "aria-label": "Slack",
           position: "right",
+          className: "item__icon item__slack",
         },
         {
-          href: "https://github.com/linkedin/datahub",
-          label: "GitHub",
+          href: "https://github.com/datahub-project/datahub",
+          "aria-label": "GitHub",
           position: "right",
+          className: "item__icon item__github",
         },
+
         {
-          to: "docs/saas",
-          label: "SaaS",
+          href: "https://www.youtube.com/channel/UC3qFQC5IiwR5fvWEqi_tJ5w",
+          "aria-label": "YouTube",
           position: "right",
-          className: "navbar-saas-button button button--primary",
+          className: "item__icon item__youtube",
         },
       ],
     },
@@ -64,10 +100,6 @@ module.exports = {
               label: "Features",
               to: "docs/features",
             },
-            {
-              label: "FAQs",
-              to: "docs/faq",
-            },
           ],
         },
         {
@@ -80,6 +112,10 @@ module.exports = {
             {
               label: "YouTube",
               href: "https://www.youtube.com/channel/UC3qFQC5IiwR5fvWEqi_tJ5w",
+            },
+            {
+              label: "Blog",
+              href: "https://blog.datahubproject.io/",
             },
             {
               label: "Town Halls",
@@ -100,7 +136,7 @@ module.exports = {
             },
             {
               label: "Roadmap",
-              to: "docs/roadmap",
+              href: "https://feature-requests.datahubproject.io/roadmap",
             },
             {
               label: "Contributing",
@@ -108,7 +144,11 @@ module.exports = {
             },
             {
               label: "GitHub",
-              href: "https://github.com/linkedin/datahub",
+              href: "https://github.com/datahub-project/datahub",
+            },
+            {
+              label: "Feature Requests",
+              href: "https://feature-requests.datahubproject.io/",
             },
           ],
         },
@@ -116,15 +156,14 @@ module.exports = {
       copyright: `Copyright © 2015-${new Date().getFullYear()} DataHub Project Authors.`,
     },
     prism: {
-      //   theme: require('prism-react-renderer/themes/github'),
-      //   darkTheme: require('prism-react-renderer/themes/dracula'),
-      additionalLanguages: ["ini"],
-    },
-    gtag: {
-      trackingID: "G-2G54RXWD4D",
+      // https://docusaurus.io/docs/markdown-features/code-blocks#theming
+      // theme: require("prism-react-renderer/themes/vsLight"),
+      // darkTheme: require("prism-react-renderer/themes/vsDark"),
+      additionalLanguages: ["ini", "java", "graphql", "shell-session"],
     },
     algolia: {
-      apiKey: "26a4b687e96e7476b5a6f11365a83336",
+      appId: "RK0UG797F3",
+      apiKey: "39d7eb90d8b31d464e309375a52d674f",
       indexName: "datahubproject",
       // contextualSearch: true,
       // searchParameters: {},
@@ -138,27 +177,34 @@ module.exports = {
         docs: {
           path: "genDocs",
           sidebarPath: require.resolve("./sidebars.js"),
-          editUrl: "https://github.com/linkedin/datahub/blob/master/",
+          ...(!isSaas && {
+            editUrl: "https://github.com/datahub-project/datahub/blob/master/",
+          }),
+          numberPrefixParser: false,
           // TODO: make these work correctly with the doc generation
           showLastUpdateAuthor: true,
           showLastUpdateTime: true,
         },
         blog: false,
         theme: {
-          customCss: require.resolve("./src/css/custom.css"),
+          customCss: [
+            isSaas ? require.resolve("./src/styles/acryl.scss") : require.resolve("./src/styles/datahub.scss"),
+            require.resolve("./src/styles/global.scss"),
+          ],
         },
       },
     ],
   ],
   plugins: [
-    "@docusaurus/plugin-ideal-image",
+    ["@docusaurus/plugin-ideal-image", { quality: 100, sizes: [320, 640, 1280, 1440, 1600] }],
+    "docusaurus-plugin-sass",
     [
       "docusaurus-graphql-plugin",
       {
         schema: "./graphql/combined.graphql",
         routeBasePath: "/docs/graphql",
       },
-    ]
+    ],
     // '@docusaurus/plugin-google-gtag',
     // [
     //   require.resolve("@easyops-cn/docusaurus-search-local"),

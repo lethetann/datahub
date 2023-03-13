@@ -8,19 +8,28 @@ set -euxo pipefail
 #   - The gradle build has already been run.
 #   - Python 3.6+ is installed and in the PATH.
 
+# Log the locally loaded images
+# docker images | grep "datahub-"
+
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd "$DIR"
 
-python3 -m venv venv
+if [ "${RUN_QUICKSTART:-true}" == "true" ]; then
+    source ./run-quickstart.sh
+fi
+
 source venv/bin/activate
-pip install --upgrade pip wheel setuptools
-pip install -r requirements.txt
 
-datahub docker quickstart \
-	--build-locally \
-	--quickstart-compose-file ../docker/docker-compose.yml \
-	--quickstart-compose-file ../docker/docker-compose.override.yml \
-	--quickstart-compose-file ../docker/docker-compose.dev.yml \
-	--dump-logs-on-failure
+(cd ..; ./gradlew :smoke-test:yarnInstall)
 
-pytest -vv
+source ./set-cypress-creds.sh
+
+if [[ -z "${TEST_STRATEGY}" ]]; then
+    pytest -rP --durations=20 -vv --continue-on-collection-errors --junit-xml=junit.smoke.xml
+else
+    if [ "$TEST_STRATEGY" == "no_cypress" ]; then
+        pytest -rP --durations=20 -vv --continue-on-collection-errors --junit-xml=junit.smoke_non_cypress.xml -k 'not test_run_cypress'
+    else
+        pytest -rP --durations=20 -vv --continue-on-collection-errors --junit-xml=junit.smoke_cypress_${TEST_STRATEGY}.xml tests/cypress/integration_test.py
+    fi
+fi

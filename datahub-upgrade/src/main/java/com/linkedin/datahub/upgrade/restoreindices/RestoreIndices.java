@@ -6,7 +6,6 @@ import com.linkedin.datahub.upgrade.UpgradeCleanupStep;
 import com.linkedin.datahub.upgrade.UpgradeStep;
 import com.linkedin.datahub.upgrade.common.steps.ClearGraphServiceStep;
 import com.linkedin.datahub.upgrade.common.steps.ClearSearchServiceStep;
-import com.linkedin.datahub.upgrade.common.steps.GMSQualificationStep;
 import com.linkedin.metadata.entity.EntityService;
 import com.linkedin.metadata.graph.GraphService;
 import com.linkedin.metadata.models.registry.EntityRegistry;
@@ -19,6 +18,12 @@ import java.util.List;
 public class RestoreIndices implements Upgrade {
   public static final String BATCH_SIZE_ARG_NAME = "batchSize";
   public static final String BATCH_DELAY_MS_ARG_NAME = "batchDelayMs";
+  public static final String NUM_THREADS_ARG_NAME = "numThreads";
+  public static final String ASPECT_NAME_ARG_NAME = "aspectName";
+  public static final String READER_POOL_SIZE = "READER_POOL_SIZE";
+  public static final String WRITER_POOL_SIZE = "WRITER_POOL_SIZE";
+  public static final String URN_ARG_NAME = "urn";
+  public static final String URN_LIKE_ARG_NAME = "urnLike";
 
   private final List<UpgradeStep> _steps;
 
@@ -42,7 +47,6 @@ public class RestoreIndices implements Upgrade {
       final EntityRegistry entityRegistry, final EntitySearchService entitySearchService,
       final GraphService graphService) {
     final List<UpgradeStep> steps = new ArrayList<>();
-    steps.add(new GMSQualificationStep());
     steps.add(new ClearSearchServiceStep(entitySearchService, false));
     steps.add(new ClearGraphServiceStep(graphService, false));
     steps.add(new SendMAEStep(server, entityService, entityRegistry));

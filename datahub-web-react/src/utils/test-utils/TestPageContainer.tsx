@@ -17,6 +17,9 @@ import { GlossaryTermEntity } from '../../app/entity/glossaryTerm/GlossaryTermEn
 import { MLFeatureTableEntity } from '../../app/entity/mlFeatureTable/MLFeatureTableEntity';
 import { MLModelEntity } from '../../app/entity/mlModel/MLModelEntity';
 import { MLModelGroupEntity } from '../../app/entity/mlModelGroup/MLModelGroupEntity';
+import { ChartEntity } from '../../app/entity/chart/ChartEntity';
+import { DashboardEntity } from '../../app/entity/dashboard/DashboardEntity';
+import { LineageExplorerContext } from '../../app/lineage/utils/LineageExplorerContext';
 
 type Props = {
     children: React.ReactNode;
@@ -26,6 +29,8 @@ type Props = {
 export function getTestEntityRegistry() {
     const entityRegistry = new EntityRegistry();
     entityRegistry.register(new DatasetEntity());
+    entityRegistry.register(new ChartEntity());
+    entityRegistry.register(new DashboardEntity());
     entityRegistry.register(new UserEntity());
     entityRegistry.register(new GroupEntity());
     entityRegistry.register(new TagEntity());
@@ -49,7 +54,28 @@ export default ({ children, initialEntries }: Props) => {
     return (
         <ThemeProvider theme={defaultThemeConfig}>
             <MemoryRouter initialEntries={initialEntries}>
-                <EntityRegistryContext.Provider value={entityRegistry}>{children}</EntityRegistryContext.Provider>
+                <EntityRegistryContext.Provider value={entityRegistry}>
+                    <LineageExplorerContext.Provider
+                        value={{
+                            expandTitles: false,
+                            showColumns: false,
+                            collapsedColumnsNodes: {},
+                            setCollapsedColumnsNodes: null,
+                            fineGrainedMap: {},
+                            selectedField: null,
+                            setSelectedField: () => {},
+                            highlightedEdges: [],
+                            setHighlightedEdges: () => {},
+                            visibleColumnsByUrn: {},
+                            setVisibleColumnsByUrn: () => {},
+                            columnsByUrn: {},
+                            setColumnsByUrn: () => {},
+                            refetchCenterNode: () => {},
+                        }}
+                    >
+                        {children}
+                    </LineageExplorerContext.Provider>
+                </EntityRegistryContext.Provider>
             </MemoryRouter>
         </ThemeProvider>
     );

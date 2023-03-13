@@ -3,6 +3,7 @@ package com.linkedin.metadata.models;
 import com.google.common.collect.ImmutableList;
 import com.linkedin.data.schema.ArrayDataSchema;
 import com.linkedin.data.schema.DataSchema;
+import com.linkedin.data.schema.NamedDataSchema;
 import com.linkedin.data.schema.RecordDataSchema;
 import com.linkedin.data.schema.TyperefDataSchema;
 import com.linkedin.data.schema.UnionDataSchema;
@@ -10,9 +11,11 @@ import com.linkedin.data.schema.annotation.DataSchemaRichContextTraverser;
 import com.linkedin.data.schema.annotation.PegasusSchemaAnnotationHandlerImpl;
 import com.linkedin.data.schema.annotation.SchemaAnnotationHandler;
 import com.linkedin.data.schema.annotation.SchemaAnnotationProcessor;
+import com.linkedin.data.template.RecordTemplate;
 import com.linkedin.metadata.models.annotation.AspectAnnotation;
 import com.linkedin.metadata.models.annotation.EntityAnnotation;
 import com.linkedin.metadata.models.annotation.RelationshipAnnotation;
+import com.linkedin.metadata.models.annotation.SearchScoreAnnotation;
 import com.linkedin.metadata.models.annotation.SearchableAnnotation;
 import com.linkedin.metadata.models.annotation.TimeseriesFieldAnnotation;
 import com.linkedin.metadata.models.annotation.TimeseriesFieldCollectionAnnotation;
@@ -21,8 +24,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
 
 
@@ -35,6 +38,8 @@ public class EntitySpecBuilder {
 
   public static SchemaAnnotationHandler _searchHandler =
       new PegasusSchemaAnnotationHandlerImpl(SearchableAnnotation.ANNOTATION_NAME);
+  public static SchemaAnnotationHandler _searchScoreHandler =
+      new PegasusSchemaAnnotationHandlerImpl(SearchScoreAnnotation.ANNOTATION_NAME);
   public static SchemaAnnotationHandler _relationshipHandler =
       new PegasusSchemaAnnotationHandlerImpl(RelationshipAnnotation.ANNOTATION_NAME);
   public static SchemaAnnotationHandler _timeseriesFiledAnnotationHandler =
@@ -68,14 +73,16 @@ public class EntitySpecBuilder {
     }
 
     // Now validate that all relationships point to valid entities.
-    for (final RelationshipFieldSpec spec : _relationshipFieldSpecs) {
-      if (!_entityNames.containsAll(
-          spec.getValidDestinationTypes().stream().map(String::toLowerCase).collect(Collectors.toList()))) {
-        failValidation(
-            String.format("Found invalid relationship with name %s at path %s. Invalid entityType(s) provided.",
-                spec.getRelationshipName(), spec.getPath()));
-      }
-    }
+    // TODO: Fix this so that aspects that are just in the entity registry don't fail because they aren't in the
+    // snapshot registry.
+//    for (final RelationshipFieldSpec spec : _relationshipFieldSpecs) {
+//      if (!_entityNames.containsAll(
+//          spec.getValidDestinationTypes().stream().map(String::toLowerCase).collect(Collectors.toList()))) {
+//        failValidation(
+//            String.format("Found invalid relationship with name %s at path %s. Invalid entityType(s) provided.",
+//                spec.getRelationshipName(), spec.getPath()));
+//      }
+//    }
 
     return entitySpecs;
   }
@@ -104,8 +111,14 @@ public class EntitySpecBuilder {
       final List<UnionDataSchema.Member> unionMembers = aspectUnionSchema.getMembers();
       final List<AspectSpec> aspectSpecs = new ArrayList<>();
       for (final UnionDataSchema.Member member : unionMembers) {
-        final AspectSpec spec = buildAspectSpec(member.getType());
-        aspectSpecs.add(spec);
+        NamedDataSchema namedDataSchema = (NamedDataSchema) member.getType();
+        try {
+          final AspectSpec spec = buildAspectSpec(member.getType(),
+              (Class<RecordTemplate>) Class.forName(namedDataSchema.getFullName()).asSubclass(RecordTemplate.class));
+          aspectSpecs.add(spec);
+        } catch (ClassNotFoundException ce) {
+          log.warn("Failed to find class for {}", member.getType(), ce);
+        }
       }
 
       final EntitySpec entitySpec = new DefaultEntitySpec(aspectSpecs, entityAnnotation, entitySnapshotRecordSchema,
@@ -147,7 +160,22 @@ public class EntitySpecBuilder {
     return null;
   }
 
-  public AspectSpec buildAspectSpec(@Nonnull final DataSchema aspectDataSchema) {
+  /**
+   * Build a config-based {@link EntitySpec}, as opposed to a Snapshot-based {@link EntitySpec}
+   */
+  public EntitySpec buildConfigEntitySpec(@Nonnull final String entityName, @Nonnull final String keyAspect,
+      @Nonnull final List<AspectSpec> aspectSpecs) {
+    return new ConfigEntitySpec(entityName, keyAspect, aspectSpecs);
+  }
+
+  public EntitySpec buildPartialEntitySpec(@Nonnull final String entityName, @Nullable final String keyAspectName,
+      @Nonnull final List<AspectSpec> aspectSpecs) {
+    EntitySpec entitySpec = new PartialEntitySpec(aspectSpecs, new EntityAnnotation(entityName, keyAspectName));
+    return entitySpec;
+  }
+
+  public AspectSpec buildAspectSpec(@Nonnull final DataSchema aspectDataSchema,
+      final Class<RecordTemplate> aspectClass) {
 
     final RecordDataSchema aspectRecordSchema = validateAspect(aspectDataSchema);
 
@@ -161,7 +189,7 @@ public class EntitySpecBuilder {
       if (AnnotationExtractionMode.IGNORE_ASPECT_FIELDS.equals(_extractionMode)) {
         // Short Circuit.
         return new AspectSpec(aspectAnnotation, Collections.emptyList(), Collections.emptyList(),
-            Collections.emptyList(), Collections.emptyList(), aspectRecordSchema);
+            Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), aspectRecordSchema, aspectClass);
       }
 
       final SchemaAnnotationProcessor.SchemaAnnotationProcessResult processedSearchResult =
@@ -173,6 +201,16 @@ public class EntitySpecBuilder {
       final DataSchemaRichContextTraverser searchableFieldSpecTraverser =
           new DataSchemaRichContextTraverser(searchableFieldSpecExtractor);
       searchableFieldSpecTraverser.traverse(processedSearchResult.getResultSchema());
+
+      final SchemaAnnotationProcessor.SchemaAnnotationProcessResult processedSearchScoreResult =
+          SchemaAnnotationProcessor.process(Collections.singletonList(_searchScoreHandler), aspectRecordSchema,
+              new SchemaAnnotationProcessor.AnnotationProcessOption());
+
+      // Extract SearchScore Field Specs
+      final SearchScoreFieldSpecExtractor searchScoreFieldSpecExtractor = new SearchScoreFieldSpecExtractor();
+      final DataSchemaRichContextTraverser searcScoreFieldSpecTraverser =
+          new DataSchemaRichContextTraverser(searchScoreFieldSpecExtractor);
+      searcScoreFieldSpecTraverser.traverse(processedSearchScoreResult.getResultSchema());
 
       final SchemaAnnotationProcessor.SchemaAnnotationProcessResult processedRelationshipResult =
           SchemaAnnotationProcessor.process(Collections.singletonList(_relationshipHandler), aspectRecordSchema,
@@ -199,8 +237,9 @@ public class EntitySpecBuilder {
       timeseriesFieldSpecTraverser.traverse(processedTimeseriesFieldResult.getResultSchema());
 
       return new AspectSpec(aspectAnnotation, searchableFieldSpecExtractor.getSpecs(),
-          relationshipFieldSpecExtractor.getSpecs(), timeseriesFieldSpecExtractor.getTimeseriesFieldSpecs(),
-          timeseriesFieldSpecExtractor.getTimeseriesFieldCollectionSpecs(), aspectRecordSchema);
+          searchScoreFieldSpecExtractor.getSpecs(), relationshipFieldSpecExtractor.getSpecs(),
+          timeseriesFieldSpecExtractor.getTimeseriesFieldSpecs(),
+          timeseriesFieldSpecExtractor.getTimeseriesFieldCollectionSpecs(), aspectRecordSchema, aspectClass);
     }
 
     failValidation(String.format("Could not build aspect spec for aspect with name %s. Missing @Aspect annotation.",

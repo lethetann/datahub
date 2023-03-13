@@ -1,6 +1,6 @@
 package com.linkedin.datahub.graphql.resolvers.policy;
 
-import com.datahub.metadata.authorization.AuthorizationManager;
+import com.datahub.authorization.AuthorizerChain;
 import com.linkedin.common.urn.Urn;
 import com.linkedin.datahub.graphql.QueryContext;
 import com.linkedin.datahub.graphql.exception.AuthorizationException;
@@ -29,9 +29,9 @@ public class DeletePolicyResolver implements DataFetcher<CompletableFuture<Strin
       final Urn urn = Urn.createFromString(policyUrn);
       return CompletableFuture.supplyAsync(() -> {
         try {
-          _entityClient.deleteEntity(urn, context.getActor());
-          if (context.getAuthorizer() instanceof AuthorizationManager) {
-            ((AuthorizationManager) context.getAuthorizer()).invalidateCache();
+          _entityClient.deleteEntity(urn, context.getAuthentication());
+          if (context.getAuthorizer() instanceof AuthorizerChain) {
+            ((AuthorizerChain) context.getAuthorizer()).getDefaultAuthorizer().invalidateCache();
           }
           return policyUrn;
         } catch (Exception e) {

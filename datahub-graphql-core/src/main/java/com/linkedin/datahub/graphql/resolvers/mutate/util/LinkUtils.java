@@ -9,8 +9,8 @@ import com.linkedin.common.url.Url;
 import com.linkedin.common.urn.Urn;
 import com.linkedin.datahub.graphql.QueryContext;
 import com.linkedin.datahub.graphql.authorization.AuthorizationUtils;
-import com.linkedin.datahub.graphql.authorization.ConjunctivePrivilegeGroup;
-import com.linkedin.datahub.graphql.authorization.DisjunctivePrivilegeGroup;
+import com.datahub.authorization.ConjunctivePrivilegeGroup;
+import com.datahub.authorization.DisjunctivePrivilegeGroup;
 import com.linkedin.datahub.graphql.resolvers.mutate.MutationUtils;
 import com.linkedin.metadata.Constants;
 import com.linkedin.metadata.authorization.PoliciesConfig;
@@ -42,7 +42,7 @@ public class LinkUtils {
         entityService,
         new InstitutionalMemory());
     addLink(institutionalMemoryAspect, linkUrl, linkLabel, actor);
-    persistAspect(resourceUrn, institutionalMemoryAspect, actor, entityService);
+    persistAspect(resourceUrn, Constants.INSTITUTIONAL_MEMORY_ASPECT_NAME, institutionalMemoryAspect, actor, entityService);
   }
 
   public static void removeLink(
@@ -57,7 +57,7 @@ public class LinkUtils {
         entityService,
         new InstitutionalMemory());
     removeLink(institutionalMemoryAspect, linkUrl);
-    persistAspect(resourceUrn, institutionalMemoryAspect, actor, entityService);
+    persistAspect(resourceUrn, Constants.INSTITUTIONAL_MEMORY_ASPECT_NAME, institutionalMemoryAspect, actor, entityService);
   }
 
   private static void addLink(InstitutionalMemory institutionalMemoryAspect, String linkUrl, String linkLabel, Urn actor) {
@@ -96,7 +96,7 @@ public class LinkUtils {
 
     return AuthorizationUtils.isAuthorized(
         context.getAuthorizer(),
-        context.getActor(),
+        context.getActorUrn(),
         resourceUrn.getEntityType(),
         resourceUrn.toString(),
         orPrivilegeGroups);

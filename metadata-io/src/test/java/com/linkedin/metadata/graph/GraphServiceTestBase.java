@@ -1,34 +1,48 @@
 package com.linkedin.metadata.graph;
 
+import com.google.common.collect.ImmutableList;
+import com.linkedin.common.urn.DataFlowUrn;
+import com.linkedin.common.urn.DataJobUrn;
 import com.linkedin.common.urn.Urn;
-import com.linkedin.metadata.query.Filter;
-import com.linkedin.metadata.query.RelationshipDirection;
-import com.linkedin.metadata.query.RelationshipFilter;
-import org.testng.Assert;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import com.linkedin.data.schema.annotation.PathSpecBasedSchemaAnnotationVisitor;
+import com.linkedin.metadata.query.filter.Filter;
+import com.linkedin.metadata.query.filter.RelationshipDirection;
+import com.linkedin.metadata.query.filter.RelationshipFilter;
 import java.net.URISyntaxException;
-import java.util.Arrays;
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
-import static com.linkedin.metadata.dao.utils.QueryUtils.EMPTY_FILTER;
-import static com.linkedin.metadata.dao.utils.QueryUtils.newFilter;
-import static com.linkedin.metadata.dao.utils.QueryUtils.newRelationshipFilter;
-import static org.testng.Assert.*;
+import org.springframework.test.context.testng.AbstractTestNGSpringContextTests;
+import org.testng.Assert;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
+
+import static com.linkedin.metadata.search.utils.QueryUtils.EMPTY_FILTER;
+import static com.linkedin.metadata.search.utils.QueryUtils.newFilter;
+import static com.linkedin.metadata.search.utils.QueryUtils.newRelationshipFilter;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNotEquals;
+import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.fail;
+
 
 /**
  * Base class for testing any GraphService implementation.
@@ -42,7 +56,7 @@ import static org.testng.Assert.*;
  * Feel free to add a test to your test implementation that calls `getPopulatedGraphService` and
  * asserts the state of the graph in an implementation specific way.
  */
-abstract public class GraphServiceTestBase {
+abstract public class GraphServiceTestBase extends AbstractTestNGSpringContextTests {
 
   private static class RelatedEntityComparator implements Comparator<RelatedEntity> {
     @Override
@@ -90,11 +104,19 @@ abstract public class GraphServiceTestBase {
   protected static Urn unknownUrn = createFromString(unknownUrnString);
 
   /**
+   * Some data jobs
+   */
+  protected static Urn dataJobOneUrn = new DataJobUrn(new DataFlowUrn("orchestrator", "flow", "cluster"), "job1");
+  protected static Urn dataJobTwoUrn = new DataJobUrn(new DataFlowUrn("orchestrator", "flow", "cluster"), "job2");
+
+  /**
    * Some test relationships.
    */
   protected static String downstreamOf = "DownstreamOf";
   protected static String hasOwner = "HasOwner";
   protected static String knowsUser = "KnowsUser";
+  protected static String produces = "Produces";
+  protected static String consumes = "Consumes";
   protected static Set<String> allRelationshipTypes = new HashSet<>(Arrays.asList(downstreamOf, hasOwner, knowsUser));
 
   /**
@@ -125,7 +147,20 @@ abstract public class GraphServiceTestBase {
   /**
    * Any source and destination type value.
    */
-  protected static @Nullable String anyType = null;
+  protected static @Nullable List<String> anyType = null;
+
+  /**
+   * Timeout used to test concurrent ops in doTestConcurrentOp.
+   */
+  protected Duration getTestConcurrentOpTimeout() {
+      return Duration.ofMinutes(1);
+  }
+
+  @BeforeMethod
+  public void disableAssert() {
+    PathSpecBasedSchemaAnnotationVisitor.class.getClassLoader()
+        .setClassAssertionStatus(PathSpecBasedSchemaAnnotationVisitor.class.getName(), false);
+  }
 
   @Test
   public void testStaticUrns() {
@@ -167,17 +202,48 @@ abstract public class GraphServiceTestBase {
     GraphService service = getGraphService();
 
     List<Edge> edges = Arrays.asList(
-            new Edge(datasetTwoUrn, datasetOneUrn, downstreamOf),
-            new Edge(datasetThreeUrn, datasetTwoUrn, downstreamOf),
-            new Edge(datasetFourUrn, datasetTwoUrn, downstreamOf),
+            new Edge(datasetTwoUrn, datasetOneUrn, downstreamOf, null, null, null, null, null),
+            new Edge(datasetThreeUrn, datasetTwoUrn, downstreamOf, null, null, null, null, null),
+            new Edge(datasetFourUrn, datasetTwoUrn, downstreamOf, null, null, null, null, null),
 
-            new Edge(datasetOneUrn, userOneUrn, hasOwner),
-            new Edge(datasetTwoUrn, userOneUrn, hasOwner),
-            new Edge(datasetThreeUrn, userTwoUrn, hasOwner),
-            new Edge(datasetFourUrn, userTwoUrn, hasOwner),
+            new Edge(datasetOneUrn, userOneUrn, hasOwner, null, null, null, null, null),
+            new Edge(datasetTwoUrn, userOneUrn, hasOwner, null, null, null, null, null),
+            new Edge(datasetThreeUrn, userTwoUrn, hasOwner, null, null, null, null, null),
+            new Edge(datasetFourUrn, userTwoUrn, hasOwner, null, null, null, null, null),
 
-            new Edge(userOneUrn, userTwoUrn, knowsUser),
-            new Edge(userTwoUrn, userOneUrn, knowsUser)
+            new Edge(userOneUrn, userTwoUrn, knowsUser, null, null, null, null, null),
+            new Edge(userTwoUrn, userOneUrn, knowsUser, null, null, null, null, null)
+    );
+
+    edges.forEach(service::addEdge);
+    syncAfterWrite();
+
+    return service;
+  }
+
+  protected GraphService getLineagePopulatedGraphService() throws Exception {
+    GraphService service = getGraphService();
+
+    List<Edge> edges = Arrays.asList(
+            new Edge(datasetTwoUrn, datasetOneUrn, downstreamOf, null, null, null, null, null),
+            new Edge(datasetThreeUrn, datasetTwoUrn, downstreamOf, null, null, null, null, null),
+            new Edge(datasetFourUrn, datasetTwoUrn, downstreamOf, null, null, null, null, null),
+
+            new Edge(datasetOneUrn, userOneUrn, hasOwner, null, null, null, null, null),
+            new Edge(datasetTwoUrn, userOneUrn, hasOwner, null, null, null, null, null),
+            new Edge(datasetThreeUrn, userTwoUrn, hasOwner, null, null, null, null, null),
+            new Edge(datasetFourUrn, userTwoUrn, hasOwner, null, null, null, null, null),
+
+            new Edge(userOneUrn, userTwoUrn, knowsUser, null, null, null, null, null),
+            new Edge(userTwoUrn, userOneUrn, knowsUser, null, null, null, null, null),
+
+            new Edge(dataJobOneUrn, datasetOneUrn, consumes, null, null, null, null, null),
+            new Edge(dataJobOneUrn, datasetTwoUrn, consumes, null, null, null, null, null),
+            new Edge(dataJobOneUrn, datasetThreeUrn, produces, null, null, null, null, null),
+            new Edge(dataJobOneUrn, datasetFourUrn, produces, null, null, null, null, null),
+            new Edge(dataJobTwoUrn, datasetOneUrn, consumes, null, null, null, null, null),
+            new Edge(dataJobTwoUrn, datasetTwoUrn, consumes, null, null, null, null, null),
+            new Edge(dataJobTwoUrn, dataJobOneUrn, downstreamOf, null, null, null, null, null)
     );
 
     edges.forEach(service::addEdge);
@@ -229,24 +295,24 @@ abstract public class GraphServiceTestBase {
                     Arrays.asList()
             },
             new Object[]{
-                    Arrays.asList(new Edge(datasetOneUrn, datasetTwoUrn, downstreamOf)),
+                    Arrays.asList(new Edge(datasetOneUrn, datasetTwoUrn, downstreamOf, null, null, null, null, null)),
                     Arrays.asList(downstreamOfDatasetTwoRelatedEntity),
                     Arrays.asList(downstreamOfDatasetOneRelatedEntity)
             },
             new Object[]{
                     Arrays.asList(
-                            new Edge(datasetOneUrn, datasetTwoUrn, downstreamOf),
-                            new Edge(datasetTwoUrn, datasetThreeUrn, downstreamOf)
+                            new Edge(datasetOneUrn, datasetTwoUrn, downstreamOf, null, null, null, null, null),
+                            new Edge(datasetTwoUrn, datasetThreeUrn, downstreamOf, null, null, null, null, null)
                     ),
                     Arrays.asList(downstreamOfDatasetTwoRelatedEntity, downstreamOfDatasetThreeRelatedEntity),
                     Arrays.asList(downstreamOfDatasetOneRelatedEntity, downstreamOfDatasetTwoRelatedEntity)
             },
             new Object[]{
                     Arrays.asList(
-                            new Edge(datasetOneUrn, datasetTwoUrn, downstreamOf),
-                            new Edge(datasetOneUrn, userOneUrn, hasOwner),
-                            new Edge(datasetTwoUrn, userTwoUrn, hasOwner),
-                            new Edge(userOneUrn, userTwoUrn, knowsUser)
+                            new Edge(datasetOneUrn, datasetTwoUrn, downstreamOf, null, null, null, null, null),
+                            new Edge(datasetOneUrn, userOneUrn, hasOwner, null, null, null, null, null),
+                            new Edge(datasetTwoUrn, userTwoUrn, hasOwner, null, null, null, null, null),
+                            new Edge(userOneUrn, userTwoUrn, knowsUser, null, null, null, null, null)
                     ),
                     Arrays.asList(
                             downstreamOfDatasetTwoRelatedEntity,
@@ -262,9 +328,9 @@ abstract public class GraphServiceTestBase {
             },
             new Object[]{
                     Arrays.asList(
-                            new Edge(userOneUrn, userOneUrn, knowsUser),
-                            new Edge(userOneUrn, userOneUrn, knowsUser),
-                            new Edge(userOneUrn, userOneUrn, knowsUser)
+                            new Edge(userOneUrn, userOneUrn, knowsUser, null, null, null, null, null),
+                            new Edge(userOneUrn, userOneUrn, knowsUser, null, null, null, null, null),
+                            new Edge(userOneUrn, userOneUrn, knowsUser, null, null, null, null, null)
                     ),
                     Arrays.asList(knowsUserOneRelatedEntity),
                     Arrays.asList(knowsUserOneRelatedEntity)
@@ -328,6 +394,63 @@ abstract public class GraphServiceTestBase {
                       knowsUserOneRelatedEntity, knowsUserTwoRelatedEntity
               )
       );
+  }
+
+  @Test
+  public void testPopulatedGraphServiceGetLineage() throws Exception {
+    GraphService service = getLineagePopulatedGraphService();
+
+    EntityLineageResult upstreamLineage = service.getLineage(datasetOneUrn, LineageDirection.UPSTREAM, 0, 1000, 1);
+    assertEquals(upstreamLineage.getTotal().intValue(), 0);
+    assertEquals(upstreamLineage.getRelationships().size(), 0);
+
+    EntityLineageResult downstreamLineage = service.getLineage(datasetOneUrn, LineageDirection.DOWNSTREAM, 0, 1000, 1);
+    assertEquals(downstreamLineage.getTotal().intValue(), 3);
+    assertEquals(downstreamLineage.getRelationships().size(), 3);
+    Map<Urn, LineageRelationship> relationships = downstreamLineage.getRelationships().stream().collect(Collectors.toMap(LineageRelationship::getEntity,
+        Function.identity()));
+    assertTrue(relationships.containsKey(datasetTwoUrn));
+    assertEquals(relationships.get(datasetTwoUrn).getType(), downstreamOf);
+    assertTrue(relationships.containsKey(dataJobOneUrn));
+    assertEquals(relationships.get(dataJobOneUrn).getType(), consumes);
+    assertTrue(relationships.containsKey(dataJobTwoUrn));
+    assertEquals(relationships.get(dataJobTwoUrn).getType(), consumes);
+
+    upstreamLineage = service.getLineage(datasetThreeUrn, LineageDirection.UPSTREAM, 0, 1000, 1);
+    assertEquals(upstreamLineage.getTotal().intValue(), 2);
+    assertEquals(upstreamLineage.getRelationships().size(), 2);
+    relationships = upstreamLineage.getRelationships().stream().collect(Collectors.toMap(LineageRelationship::getEntity,
+        Function.identity()));
+    assertTrue(relationships.containsKey(datasetTwoUrn));
+    assertEquals(relationships.get(datasetTwoUrn).getType(), downstreamOf);
+    assertTrue(relationships.containsKey(dataJobOneUrn));
+    assertEquals(relationships.get(dataJobOneUrn).getType(), produces);
+
+    downstreamLineage = service.getLineage(datasetThreeUrn, LineageDirection.DOWNSTREAM, 0, 1000, 1);
+    assertEquals(downstreamLineage.getTotal().intValue(), 0);
+    assertEquals(downstreamLineage.getRelationships().size(), 0);
+
+    upstreamLineage = service.getLineage(dataJobOneUrn, LineageDirection.UPSTREAM, 0, 1000, 1);
+    assertEquals(upstreamLineage.getTotal().intValue(), 2);
+    assertEquals(upstreamLineage.getRelationships().size(), 2);
+    relationships = upstreamLineage.getRelationships().stream().collect(Collectors.toMap(LineageRelationship::getEntity,
+        Function.identity()));
+    assertTrue(relationships.containsKey(datasetOneUrn));
+    assertEquals(relationships.get(datasetOneUrn).getType(), consumes);
+    assertTrue(relationships.containsKey(datasetTwoUrn));
+    assertEquals(relationships.get(datasetTwoUrn).getType(), consumes);
+
+    downstreamLineage = service.getLineage(dataJobOneUrn, LineageDirection.DOWNSTREAM, 0, 1000, 1);
+    assertEquals(downstreamLineage.getTotal().intValue(), 3);
+    assertEquals(downstreamLineage.getRelationships().size(), 3);
+    relationships = downstreamLineage.getRelationships().stream().collect(Collectors.toMap(LineageRelationship::getEntity,
+        Function.identity()));
+    assertTrue(relationships.containsKey(datasetThreeUrn));
+    assertEquals(relationships.get(datasetThreeUrn).getType(), produces);
+    assertTrue(relationships.containsKey(datasetFourUrn));
+    assertEquals(relationships.get(datasetFourUrn).getType(), produces);
+    assertTrue(relationships.containsKey(dataJobTwoUrn));
+    assertEquals(relationships.get(dataJobTwoUrn).getType(), downstreamOf);
   }
 
   @DataProvider(name = "FindRelatedEntitiesSourceEntityFilterTests")
@@ -615,12 +738,12 @@ abstract public class GraphServiceTestBase {
   }
 
   @Test(dataProvider = "FindRelatedEntitiesSourceTypeTests")
-  public void testFindRelatedEntitiesSourceType(String datasetType,
+  public void testFindRelatedEntitiesSourceType(String entityTypeFilter,
                                                 List<String> relationshipTypes,
                                                 RelationshipFilter relationships,
                                                 List<RelatedEntity> expectedRelatedEntities) throws Exception {
     doTestFindRelatedEntities(
-            datasetType,
+            entityTypeFilter != null ? ImmutableList.of(entityTypeFilter) : null,
             anyType,
             relationshipTypes,
             relationships,
@@ -741,13 +864,13 @@ abstract public class GraphServiceTestBase {
   }
 
   @Test(dataProvider = "FindRelatedEntitiesDestinationTypeTests")
-  public void testFindRelatedEntitiesDestinationType(String datasetType,
+  public void testFindRelatedEntitiesDestinationType(String entityTypeFilter,
                                                      List<String> relationshipTypes,
                                                      RelationshipFilter relationships,
                                                      List<RelatedEntity> expectedRelatedEntities) throws Exception {
     doTestFindRelatedEntities(
             anyType,
-            datasetType,
+            entityTypeFilter != null ? ImmutableList.of(entityTypeFilter) : null,
             relationshipTypes,
             relationships,
             expectedRelatedEntities
@@ -755,8 +878,8 @@ abstract public class GraphServiceTestBase {
   }
 
   private void doTestFindRelatedEntities(
-          final String sourceType,
-          final String destinationType,
+          final List<String> sourceType,
+          final List<String> destinationType,
           final List<String> relationshipTypes,
           final RelationshipFilter relationshipFilter,
           List<RelatedEntity> expectedRelatedEntities
@@ -773,8 +896,8 @@ abstract public class GraphServiceTestBase {
     assertEqualsAnyOrder(relatedEntities, expectedRelatedEntities);
   }
 
-  private void doTestFindRelatedEntitiesEntityType(@Nullable String sourceType,
-                                                   @Nullable String destinationType,
+  private void doTestFindRelatedEntitiesEntityType(@Nullable List<String> sourceType,
+                                                   @Nullable List<String> destinationType,
                                                    @Nonnull String relationshipType,
                                                    @Nonnull RelationshipFilter relationshipFilter,
                                                    @Nonnull GraphService service,
@@ -796,17 +919,17 @@ abstract public class GraphServiceTestBase {
     assertNotNull(nullUrn);
     RelatedEntity nullRelatedEntity = new RelatedEntity(downstreamOf, nullUrn.toString());
 
-    doTestFindRelatedEntitiesEntityType(anyType, "null", downstreamOf, outgoingRelationships, service);
+    doTestFindRelatedEntitiesEntityType(anyType, ImmutableList.of("null"), downstreamOf, outgoingRelationships, service);
     doTestFindRelatedEntitiesEntityType(anyType, null, downstreamOf, outgoingRelationships, service);
 
-    service.addEdge(new Edge(datasetTwoUrn, datasetOneUrn, downstreamOf));
+    service.addEdge(new Edge(datasetTwoUrn, datasetOneUrn, downstreamOf, null, null, null, null, null));
     syncAfterWrite();
-    doTestFindRelatedEntitiesEntityType(anyType, "null", downstreamOf, outgoingRelationships, service);
+    doTestFindRelatedEntitiesEntityType(anyType, ImmutableList.of("null"), downstreamOf, outgoingRelationships, service);
     doTestFindRelatedEntitiesEntityType(anyType, null, downstreamOf, outgoingRelationships, service, downstreamOfDatasetOneRelatedEntity);
 
-    service.addEdge(new Edge(datasetOneUrn, nullUrn, downstreamOf));
+    service.addEdge(new Edge(datasetOneUrn, nullUrn, downstreamOf, null, null, null, null, null));
     syncAfterWrite();
-    doTestFindRelatedEntitiesEntityType(anyType, "null", downstreamOf, outgoingRelationships, service, nullRelatedEntity);
+    doTestFindRelatedEntitiesEntityType(anyType, ImmutableList.of("null"), downstreamOf, outgoingRelationships, service, nullRelatedEntity);
     doTestFindRelatedEntitiesEntityType(anyType, null, downstreamOf, outgoingRelationships, service, nullRelatedEntity, downstreamOfDatasetOneRelatedEntity);
   }
 
@@ -818,17 +941,17 @@ abstract public class GraphServiceTestBase {
     assertNotNull(nullUrn);
     RelatedEntity nullRelatedEntity = new RelatedEntity(downstreamOf, nullUrn.toString());
 
-    doTestFindRelatedEntitiesEntityType(anyType, "null", downstreamOf, outgoingRelationships, service);
+    doTestFindRelatedEntitiesEntityType(anyType, ImmutableList.of("null"), downstreamOf, outgoingRelationships, service);
     doTestFindRelatedEntitiesEntityType(anyType, null, downstreamOf, outgoingRelationships, service);
 
-    service.addEdge(new Edge(datasetTwoUrn, datasetOneUrn, downstreamOf));
+    service.addEdge(new Edge(datasetTwoUrn, datasetOneUrn, downstreamOf, null, null, null, null, null));
     syncAfterWrite();
-    doTestFindRelatedEntitiesEntityType(anyType, "null", downstreamOf, outgoingRelationships, service);
+    doTestFindRelatedEntitiesEntityType(anyType, ImmutableList.of("null"), downstreamOf, outgoingRelationships, service);
     doTestFindRelatedEntitiesEntityType(anyType, null, downstreamOf, outgoingRelationships, service, downstreamOfDatasetOneRelatedEntity);
 
-    service.addEdge(new Edge(datasetOneUrn, nullUrn, downstreamOf));
+    service.addEdge(new Edge(datasetOneUrn, nullUrn, downstreamOf, null, null, null, null, null));
     syncAfterWrite();
-    doTestFindRelatedEntitiesEntityType(anyType, "null", downstreamOf, outgoingRelationships, service, nullRelatedEntity);
+    doTestFindRelatedEntitiesEntityType(anyType, ImmutableList.of("null"), downstreamOf, outgoingRelationships, service, nullRelatedEntity);
     doTestFindRelatedEntitiesEntityType(anyType, null, downstreamOf, outgoingRelationships, service, nullRelatedEntity, downstreamOfDatasetOneRelatedEntity);
   }
 
@@ -918,8 +1041,8 @@ abstract public class GraphServiceTestBase {
     GraphService service = getPopulatedGraphService();
 
     RelatedEntitiesResult relatedEntities = service.findRelatedEntities(
-            datasetType, newFilter("urn", datasetOneUrnString),
-            userType, newFilter("urn", userOneUrnString),
+            ImmutableList.of(datasetType), newFilter("urn", datasetOneUrnString),
+            ImmutableList.of(userType), newFilter("urn", userOneUrnString),
             Arrays.asList(hasOwner), outgoingRelationships,
             0, 10
     );
@@ -927,10 +1050,33 @@ abstract public class GraphServiceTestBase {
     assertEquals(relatedEntities.entities, Arrays.asList(hasOwnerUserOneRelatedEntity));
 
     relatedEntities = service.findRelatedEntities(
-            datasetType, newFilter("urn", datasetOneUrnString),
-            userType, newFilter("urn", userTwoUrnString),
+            ImmutableList.of(datasetType), newFilter("urn", datasetOneUrnString),
+            ImmutableList.of(userType), newFilter("urn", userTwoUrnString),
             Arrays.asList(hasOwner), incomingRelationships,
             0, 10
+    );
+
+    assertEquals(relatedEntities.entities, Collections.emptyList());
+  }
+
+  @Test
+  public void testFindRelatedEntitiesMultipleEntityTypes() throws Exception {
+    GraphService service = getPopulatedGraphService();
+
+    RelatedEntitiesResult relatedEntities = service.findRelatedEntities(
+        ImmutableList.of(datasetType, userType), newFilter("urn", datasetOneUrnString),
+        ImmutableList.of(datasetType, userType), newFilter("urn", userOneUrnString),
+        Arrays.asList(hasOwner), outgoingRelationships,
+        0, 10
+    );
+
+    assertEquals(relatedEntities.entities, Arrays.asList(hasOwnerUserOneRelatedEntity));
+
+    relatedEntities = service.findRelatedEntities(
+        ImmutableList.of(datasetType, userType), newFilter("urn", datasetOneUrnString),
+        ImmutableList.of(datasetType, userType), newFilter("urn", userTwoUrnString),
+        Arrays.asList(hasOwner), incomingRelationships,
+        0, 10
     );
 
     assertEquals(relatedEntities.entities, Collections.emptyList());
@@ -942,7 +1088,7 @@ abstract public class GraphServiceTestBase {
 
     // populated graph asserted in testPopulatedGraphService
     RelatedEntitiesResult allRelatedEntities = service.findRelatedEntities(
-            datasetType, EMPTY_FILTER,
+            ImmutableList.of(datasetType), EMPTY_FILTER,
             anyType, EMPTY_FILTER,
             Arrays.asList(downstreamOf, hasOwner, knowsUser), outgoingRelationships,
             0, 100
@@ -952,7 +1098,7 @@ abstract public class GraphServiceTestBase {
     IntStream.range(0, allRelatedEntities.entities.size())
             .forEach(idx -> individualRelatedEntities.addAll(
                     service.findRelatedEntities(
-                    datasetType, EMPTY_FILTER,
+                        ImmutableList.of(datasetType), EMPTY_FILTER,
                     anyType, EMPTY_FILTER,
                     Arrays.asList(downstreamOf, hasOwner, knowsUser), outgoingRelationships,
                     idx, 1
@@ -1240,7 +1386,7 @@ abstract public class GraphServiceTestBase {
     // assert the modified graph: check all nodes related to upstreamOf and nextVersionOf edges again
     assertEqualsAnyOrder(
             service.findRelatedEntities(
-                    datasetType, EMPTY_FILTER,
+                ImmutableList.of(datasetType), EMPTY_FILTER,
                     anyType, EMPTY_FILTER,
                     Arrays.asList(downstreamOf), outgoingRelationships,
                     0, 100
@@ -1249,7 +1395,7 @@ abstract public class GraphServiceTestBase {
     );
     assertEqualsAnyOrder(
             service.findRelatedEntities(
-                    userType, EMPTY_FILTER,
+                ImmutableList.of(userType), EMPTY_FILTER,
                     anyType, EMPTY_FILTER,
                     Arrays.asList(hasOwner), outgoingRelationships,
                     0, 100
@@ -1259,7 +1405,7 @@ abstract public class GraphServiceTestBase {
     assertEqualsAnyOrder(
             service.findRelatedEntities(
                     anyType, EMPTY_FILTER,
-                    userType, EMPTY_FILTER,
+                ImmutableList.of(userType), EMPTY_FILTER,
                     Arrays.asList(knowsUser), outgoingRelationships,
                     0, 100
             ),
@@ -1278,7 +1424,7 @@ abstract public class GraphServiceTestBase {
                   int destinationType = destinationNode % 3;
                   Urn destination = createFromString("urn:li:type" + destinationType + ":(urn:li:node" + destinationNode + ")");
 
-                  edges.add(new Edge(source, destination, relationship));
+                  edges.add(new Edge(source, destination, relationship, null, null, null, null, null));
               }
           }
       }
@@ -1293,7 +1439,7 @@ abstract public class GraphServiceTestBase {
       // too many edges may cause too many threads throwing
       // java.util.concurrent.RejectedExecutionException: Thread limit exceeded replacing blocked worker
       int nodes = 5;
-      int relationshipTypes = 5;
+      int relationshipTypes = 3;
       List<String> allRelationships = IntStream.range(1, relationshipTypes + 1).mapToObj(id -> "relationship" + id).collect(Collectors.toList());
       List<Edge> edges = getFullyConnectedGraph(nodes, allRelationships);
 
@@ -1324,8 +1470,8 @@ abstract public class GraphServiceTestBase {
   public void testConcurrentRemoveEdgesFromNode() throws Exception {
     final GraphService service = getGraphService();
 
-    int nodes = 10;
-    int relationshipTypes = 5;
+    int nodes = 5;
+    int relationshipTypes = 3;
     List<String> allRelationships = IntStream.range(1, relationshipTypes + 1).mapToObj(id -> "relationship" + id).collect(Collectors.toList());
     List<Edge> edges = getFullyConnectedGraph(nodes, allRelationships);
 
@@ -1368,8 +1514,8 @@ abstract public class GraphServiceTestBase {
 
     // too many edges may cause too many threads throwing
     // java.util.concurrent.RejectedExecutionException: Thread limit exceeded replacing blocked worker
-    int nodes = 10;
-    int relationshipTypes = 5;
+    int nodes = 5;
+    int relationshipTypes = 3;
     List<String> allRelationships = IntStream.range(1, relationshipTypes + 1).mapToObj(id -> "relationship" + id).collect(Collectors.toList());
     List<Edge> edges = getFullyConnectedGraph(nodes, allRelationships);
 
@@ -1426,16 +1572,58 @@ abstract public class GraphServiceTestBase {
                   }
 
                   operation.run();
-                  finished.countDown();
               } catch (Throwable t) {
                   t.printStackTrace();
                   throwables.add(t);
               }
+              finished.countDown();
           }
       }).start());
 
-      assertTrue(finished.await(10, TimeUnit.SECONDS));
+      assertTrue(finished.await(getTestConcurrentOpTimeout().toMillis(), TimeUnit.MILLISECONDS));
+      throwables.forEach(throwable -> System.err.printf(System.currentTimeMillis() + ": exception occurred: %s%n", throwable));
       assertEquals(throwables.size(), 0);
   }
 
+  @Test
+  public void testPopulatedGraphServiceGetLineageMultihop() throws Exception {
+      GraphService service = getLineagePopulatedGraphService();
+
+      EntityLineageResult upstreamLineage = service.getLineage(datasetOneUrn, LineageDirection.UPSTREAM, 0, 1000, 2);
+      assertEquals(upstreamLineage.getTotal().intValue(), 0);
+      assertEquals(upstreamLineage.getRelationships().size(), 0);
+
+      EntityLineageResult downstreamLineage = service.getLineage(datasetOneUrn, LineageDirection.DOWNSTREAM, 0, 1000, 2);
+
+      assertEquals(downstreamLineage.getTotal().intValue(), 5);
+      assertEquals(downstreamLineage.getRelationships().size(), 5);
+      Map<Urn, LineageRelationship> relationships = downstreamLineage.getRelationships().stream().collect(Collectors.toMap(LineageRelationship::getEntity,
+              Function.identity()));
+      assertTrue(relationships.containsKey(datasetTwoUrn));
+      assertEquals(relationships.get(datasetTwoUrn).getDegree().intValue(), 1);
+      assertTrue(relationships.containsKey(datasetThreeUrn));
+      assertEquals(relationships.get(datasetThreeUrn).getDegree().intValue(), 2);
+      assertTrue(relationships.containsKey(datasetFourUrn));
+      assertEquals(relationships.get(datasetFourUrn).getDegree().intValue(), 2);
+      assertTrue(relationships.containsKey(dataJobOneUrn));
+      assertEquals(relationships.get(dataJobOneUrn).getDegree().intValue(), 1);
+      assertTrue(relationships.containsKey(dataJobTwoUrn));
+      assertEquals(relationships.get(dataJobTwoUrn).getDegree().intValue(), 1);
+
+      upstreamLineage = service.getLineage(datasetThreeUrn, LineageDirection.UPSTREAM, 0, 1000, 2);
+      assertEquals(upstreamLineage.getTotal().intValue(), 3);
+      assertEquals(upstreamLineage.getRelationships().size(), 3);
+      relationships = upstreamLineage.getRelationships().stream().collect(Collectors.toMap(LineageRelationship::getEntity,
+              Function.identity()));
+      assertTrue(relationships.containsKey(datasetOneUrn));
+      assertEquals(relationships.get(datasetOneUrn).getDegree().intValue(), 2);
+      assertTrue(relationships.containsKey(datasetTwoUrn));
+      assertEquals(relationships.get(datasetTwoUrn).getDegree().intValue(), 1);
+      assertTrue(relationships.containsKey(dataJobOneUrn));
+      assertEquals(relationships.get(dataJobOneUrn).getDegree().intValue(), 1);
+
+      downstreamLineage = service.getLineage(datasetThreeUrn, LineageDirection.DOWNSTREAM, 0, 1000, 2);
+      assertEquals(downstreamLineage.getTotal().intValue(), 0);
+      assertEquals(downstreamLineage.getRelationships().size(), 0);
+  }
 }

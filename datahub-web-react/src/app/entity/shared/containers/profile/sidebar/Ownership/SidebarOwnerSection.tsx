@@ -1,42 +1,62 @@
 import { Typography, Button } from 'antd';
 import React, { useState } from 'react';
 import { PlusOutlined } from '@ant-design/icons';
-import { ExpandedOwner } from '../../../../components/styled/ExpandedOwner';
+import { ExpandedOwner } from '../../../../components/styled/ExpandedOwner/ExpandedOwner';
 import { EMPTY_MESSAGES } from '../../../../constants';
-import { useEntityData, useRefetch } from '../../../../EntityContext';
+import { useEntityData, useMutationUrn, useRefetch } from '../../../../EntityContext';
 import { SidebarHeader } from '../SidebarHeader';
-import { AddOwnerModal } from './AddOwnerModal';
+import { EditOwnersModal } from './EditOwnersModal';
+import { ENTITY_PROFILE_OWNERS_ID } from '../../../../../../onboarding/config/EntityProfileOnboardingConfig';
 
-export const SidebarOwnerSection = () => {
-    const { urn, entityData } = useEntityData();
+interface Props {
+    properties?: any;
+    readOnly?: boolean;
+}
+
+export const SidebarOwnerSection = ({ properties, readOnly }: Props) => {
+    const { entityType, entityData } = useEntityData();
+    const mutationUrn = useMutationUrn();
+
     const refetch = useRefetch();
     const [showAddModal, setShowAddModal] = useState(false);
     const ownersEmpty = !entityData?.ownership?.owners?.length;
 
     return (
-        <div>
+        <div id={ENTITY_PROFILE_OWNERS_ID}>
             <SidebarHeader title="Owners" />
             <div>
                 {entityData?.ownership?.owners?.map((owner) => (
-                    <ExpandedOwner entityUrn={urn} owner={owner} refetch={refetch} />
+                    <ExpandedOwner
+                        key={owner.owner.urn}
+                        entityUrn={owner.associatedUrn || mutationUrn}
+                        owner={owner}
+                        refetch={refetch}
+                        readOnly={readOnly}
+                    />
                 ))}
                 {ownersEmpty && (
                     <Typography.Paragraph type="secondary">
                         {EMPTY_MESSAGES.owners.title}. {EMPTY_MESSAGES.owners.description}
                     </Typography.Paragraph>
                 )}
-
-                <Button type={ownersEmpty ? 'default' : 'text'} onClick={() => setShowAddModal(true)}>
-                    <PlusOutlined /> Add Owner
-                </Button>
+                {!readOnly && (
+                    <Button type={ownersEmpty ? 'default' : 'text'} onClick={() => setShowAddModal(true)}>
+                        <PlusOutlined /> Add Owners
+                    </Button>
+                )}
             </div>
-            <AddOwnerModal
-                visible={showAddModal}
-                refetch={refetch}
-                onClose={() => {
-                    setShowAddModal(false);
-                }}
-            />
+            {showAddModal && (
+                <EditOwnersModal
+                    urns={[mutationUrn]}
+                    defaultOwnerType={properties?.defaultOwnerType}
+                    hideOwnerType={properties?.hideOwnerType || false}
+                    entityType={entityType}
+                    refetch={refetch}
+                    onCloseModal={() => {
+                        setShowAddModal(false);
+                    }}
+                />
+            )}
         </div>
     );
 };
